@@ -1,6 +1,6 @@
 ## Welcome to GitHub Pages
 
-[Link to Proposal](https://github.com/mkpjnx/15418-Final-Project/proposal.md)
+[Link to Proposal](https://github.com/mkpjnx/15418-Final-Project/blob/gh-pages/proposal.md)
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
