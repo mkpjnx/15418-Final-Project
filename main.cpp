@@ -3,10 +3,11 @@
 #include <getopt.h>
 #include <string>
 #include "sim.h"
-#define CLAMP(x, minimum, maximum) std::max(minimum, std::min(x, maximum))
 
-void print_u(grid_t *g, double max_u){
-  FILE *fp = fopen("out.ppm", "wb");
+void print_u(grid_t *g, int iter){
+  char buf[50];
+  sprintf(buf, "out%d.ppm", iter);
+  FILE *fp = fopen(buf, "wb");
 
   if (!fp) {
       fprintf(stderr, "Error: could not open file for write\n");
@@ -18,7 +19,7 @@ void print_u(grid_t *g, double max_u){
   for (int j=g->nrow-1; j>=0; j--) {
     for (int i=0; i< g->ncol; i++) {
 
-      double dub = g->u[GINDEX(g,j,i)] / max_u;
+      double dub = g->v[GINDEX(g,j,i)] * 3;
 
       char val[3];
       val[0] = static_cast<char>(255. * CLAMP(dub, 0., 1.));
@@ -38,11 +39,13 @@ void print_u(grid_t *g, double max_u){
 int main(int argc, char** argv)
 {
   //args: Time steps
-  grid_t *g = new_grid(1000,1000);
-  initialize_grid(g);
-  double max_u = run_grid(g, 1000);
 
-  print_u(g, max_u);
+  grid_t *g = new_grid(500,500);
+  initialize_grid(g);
+  for(int i = 0; i < 20; i ++){
+    run_grid(g, 500);
+    print_u(g, i);
+  }
   return 0;
 }
 
