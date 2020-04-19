@@ -2,11 +2,16 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <string>
+#include <iostream>
+#include <getopt.h>
 #include "sim.h"
+#include "cycleTimer.h"
+#include "instrument.h"
+
 
 void print_u(grid_t *g, int iter){
   char buf[50];
-  sprintf(buf, "out%d.ppm", iter);
+  sprintf(buf, "out/out%d.ppm", iter);
   FILE *fp = fopen(buf, "wb");
 
   if (!fp) {
@@ -36,16 +41,57 @@ void print_u(grid_t *g, int iter){
 
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv){
+  bool instrument = false;
+  bool verbose = false;
+  int steps = 500;
+  int runs = 5;
+  char opt;
+  while ((opt = getopt(argc, argv, "hvs:r:I")) != -1) {
+    switch (opt) {
+    case 'h':
+      printf("h for howdy\n");
+      break;
+    case 'v':
+      verbose = true;
+      break;
+    case 's':
+      steps = atoi(optarg);
+      break;
+    case 'r':
+      runs = atoi(optarg);
+      break;
+    case 'I':
+      instrument = true;
+      break;
+    default:
+      fprintf(stderr, "Usage: %s [-s steps] \n", argv[0]);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+
   //args: Time steps
 
+  track_activity(instrument); 
+  start_activity(ACTIVITY_STARTUP);
   grid_t *g = new_grid(500,500);
   initialize_grid(g);
-  for(int i = 0; i < 20; i ++){
-    run_grid(g, 500);
+  finish_activity(ACTIVITY_STARTUP);
+  double average = 0;
+  double start;
+  for(int i = 0; i < runs; i ++){
+    if (verbose) printf("Run:\t%d\n", i);
+    if (instrument) start = CycleTimer::currentSeconds();
+    run_grid(g, steps);
     print_u(g, i);
+    if (instrument) average += CycleTimer::currentSeconds() - start;
   }
+  if (instrument){
+    std::cout << "Average time per run:\t" << average/runs << std::endl;
+    std::cout << "Average time per step:\t" << average/runs/steps << std::endl;
+  }
+  show_activity(instrument);
   return 0;
 }
 

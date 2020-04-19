@@ -1,4 +1,4 @@
-
+#include "instrument.h"
 enum InitMode {UNIFORM};
 enum SimMode {JACOBI};
 

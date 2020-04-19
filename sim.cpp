@@ -72,11 +72,11 @@ void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
 double run_grid(grid_t *g, int steps, SimMode m) {
   double *temp_u = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
   double *temp_v = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
-
+  start_activity(ACTIVITY_JSTEP);
   for(int s = 0; s < steps; s++) {
-    if (s%1000 == 0) printf("step %d\n",s);
     jacobi_step(g, temp_u, temp_v);
   }
+  finish_activity(ACTIVITY_JSTEP);
   return 1;
 
   free(temp_u);
