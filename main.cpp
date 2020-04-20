@@ -75,7 +75,7 @@ int main(int argc, char** argv){
 
   track_activity(instrument); 
   start_activity(ACTIVITY_STARTUP);
-  grid_t *g = new_grid(500,500);
+  grid_t *g = new_grid(5000,5000);
   initialize_grid(g);
   finish_activity(ACTIVITY_STARTUP);
   double average = 0;

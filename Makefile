@@ -1,17 +1,16 @@
 CXX=g++ -m64
 CXXFLAGS=-Icommon -Iobjs/ -O3 -Wall
+OMP=-fopenmp -DOMP
 
 APP_NAME=grayscott
 OBJDIR=objs
 
-OBJ = main.o sim.o instrument.o
+CXXFILES = main.cpp sim.cpp instrument.cpp
+DEPS = cycleTimer.h sim.h
 
-default: $(APP_NAME)
+default: $(APP_NAME)-omp $(APP_NAME)-seq
 
-.PHONY: dirs convert clean
-
-dirs:
-		/bin/mkdir -p $(OBJDIR)/
+.PHONY: convert clean
 
 convert:
 	mogrify -format jpg out/*.ppm
@@ -20,17 +19,13 @@ convert:
 clean:
 	rm -rf out/*.jpg
 	rm -rf out/*.ppm
-	rm $(APP_NAME)
-	rm -rf $(OBJDIR)/*.o
+	rm $(APP_NAME)-seq
+	rm $(APP_NAME)-omp
 	rm -rf sequential
 
-OBJS = $(OBJDIR)/main.o $(OBJDIR)/sim.o $(OBJDIR)/instrument.o
+$(APP_NAME)-seq: $(DEPS) $(CXXFILES)
+		$(CXX) $(CXXFLAGS) -o $@ $(CXXFILES) -lm
 
-$(APP_NAME): dirs $(OBJS)
-		$(CXX) $(CXXFLAGS) -o $@ $(OBJS) -lm
+$(APP_NAME)-omp: $(DEPS) $(CXXFILES)
+		$(CXX) $(CXXFLAGS) $(OMP) -o $@ $(CXXFILES) -lm
 
-$(OBJDIR)/%.o: %.cpp
-		$(CXX) $< $(CXXFLAGS) -c -o $@
-
-$(OBJDIR)/main.o: cycleTimer.h
-$(OBJDIR)/instrument.o: cycleTimer.h

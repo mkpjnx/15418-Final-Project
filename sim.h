@@ -1,4 +1,8 @@
 #include "instrument.h"
+
+#define STRIDE_I 3
+#define STRIDE_J 32
+
 enum InitMode {UNIFORM};
 enum SimMode {JACOBI};
 

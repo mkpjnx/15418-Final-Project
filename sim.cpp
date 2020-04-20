@@ -50,18 +50,24 @@ double getGrad(grid_t *g, int i, int j, bool u) {
 }
 
 void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
-  for(int i = 0; i < g->nrow; i++){
-      for(int j = 0; j < g->ncol; j++){
-        int ind = GINDEX(g, i, j);
-        double Du = DU * getGrad(g,i,j,true);
-        double Dv = DV * getGrad(g,i,j,false);
-        double u = g->u[ind];
-        double v = g->v[ind];
-        u += Du - u*v*v + FEED_RATE * (1.0 - u);
-        v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
-        (temp_u)[ind] = CLAMP(u, 0.0, 1.0);
-        (temp_v)[ind] = CLAMP(v, 0.0,1.0);
-        
+  #pragma omp parallel for
+  for(int i = 0; i < g->nrow; i += STRIDE_I){
+    for(int j = 0; j < g->ncol; j += STRIDE_J){
+      for(int ii = 0; ii < STRIDE_I; ii ++){
+        for(int jj = 0; jj < STRIDE_J; jj ++){
+          if (i + ii >=  g->nrow || j + jj >=  g->ncol ) continue;
+
+          int ind = GINDEX(g, i + ii, j+jj);
+          double Du = DU * getGrad(g, i + ii, j+jj,true);
+          double Dv = DV * getGrad(g, i + ii, j+jj,false);
+          double u = g->u[ind];
+          double v = g->v[ind];
+          u += Du - u*v*v + FEED_RATE * (1.0 - u);
+          v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
+          (temp_u)[ind] = CLAMP(u, 0.0, 1.0);
+          (temp_v)[ind] = CLAMP(v, 0.0,1.0);
+        }
+      }
     }
   }
 
