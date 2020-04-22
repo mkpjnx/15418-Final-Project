@@ -8,7 +8,7 @@ enum SimMode {JACOBI};
 
 static const int K_SIZE = 3;
 
-static const double FEED_RATE = 0.078;
+static const double FEED_RATE = 0.037;
 static const double KILL_RATE = 0.0612;
 static const double DU = 0.209;
 static const double DV = 0.105;

@@ -9,7 +9,7 @@
 #include "instrument.h"
 
 
-void print_u(grid_t *g, int iter){
+void write_ppm(grid_t *g, int iter){
   char buf[50];
   sprintf(buf, "out/out%d.ppm", iter);
   FILE *fp = fopen(buf, "wb");
@@ -36,9 +36,26 @@ void print_u(grid_t *g, int iter){
       fputc(val[2], fp);
     }
   }
-
     fclose(fp);
+}
 
+void write_raw(grid_t *g, int iter){
+  char buf[50];
+  sprintf(buf, "out/out%d.txt", iter);
+  FILE *fp = fopen(buf, "wb");
+
+  if (!fp) {
+      fprintf(stderr, "Error: could not open file for write\n");
+      exit(1);
+  }
+  for (int j=g->nrow-1; j>=0; j--) {
+    for (int i=0; i< g->ncol; i++) {
+
+      double dub = g->v[GINDEX(g,j,i)];
+      fprintf(fp, "%d,%d: %.9lf\n", j, i, dub);
+    }
+  }
+    fclose(fp);
 }
 
 int main(int argc, char** argv){
@@ -75,7 +92,7 @@ int main(int argc, char** argv){
 
   track_activity(instrument); 
   start_activity(ACTIVITY_STARTUP);
-  grid_t *g = new_grid(5000,5000);
+  grid_t *g = new_grid(100,100);
   initialize_grid(g);
   finish_activity(ACTIVITY_STARTUP);
   double average = 0;
@@ -83,8 +100,9 @@ int main(int argc, char** argv){
   for(int i = 0; i < runs; i ++){
     if (verbose) printf("Run:\t%d\n", i);
     if (instrument) start = CycleTimer::currentSeconds();
+    write_raw(g,i);
     run_grid(g, steps);
-    print_u(g, i);
+    write_ppm(g, i);
     if (instrument) average += CycleTimer::currentSeconds() - start;
   }
   if (instrument){

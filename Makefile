@@ -1,5 +1,5 @@
 CXX=g++ -m64
-CXXFLAGS=-Icommon -Iobjs/ -O3 -Wall
+CXXFLAGS=-Icommon -Iobjs/ -O0 -Wall
 OMP=-fopenmp -DOMP
 
 APP_NAME=grayscott

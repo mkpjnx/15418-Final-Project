@@ -24,15 +24,20 @@ void free_grid(grid_t *g) {
 }
 
 void initialize_grid(grid_t *g, InitMode m) {
-  for(int i = 0; i < g->nrow + 2; i++) {
-    for(int j = 0; j < g->ncol + 2; j++) {
-      int ind = i * (g->ncol + 2) + j;
+  for(int i = -1; i <= g->nrow; i++) {
+    for(int j = -1; j <= g->ncol; j++) {
+      int ind = GINDEX(g,i,j);
       //border
-      if ((i-250) * (i-250) + (j-250) * (j-250) <= 400){
-        g->u[ind] = .25;
-        g->v[ind] = .5;
+      int centery = g->nrow/2;
+      int centerx = g->ncol/2;
+      int radius = 10;
+      
+      if ((i-centery) * (i-centery) + (j-centerx) * (j-centerx) <= radius * radius){
+        g->u[ind] = 1.0/4;
+        g->v[ind] = 1.0/2;
       } else {
-        g->u[ind] = 1;
+        g->u[ind] = 1.0;
+        g->v[ind] = 0;
       }
     }
   }
@@ -50,7 +55,9 @@ double getGrad(grid_t *g, int i, int j, bool u) {
 }
 
 void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
-  #pragma omp parallel for
+  #pragma omp parallel
+  { 
+  #pragma omp for
   for(int i = 0; i < g->nrow; i += STRIDE_I){
     for(int j = 0; j < g->ncol; j += STRIDE_J){
       for(int ii = 0; ii < STRIDE_I; ii ++){
@@ -64,15 +71,24 @@ void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
           double v = g->v[ind];
           u += Du - u*v*v + FEED_RATE * (1.0 - u);
           v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
-          (temp_u)[ind] = CLAMP(u, 0.0, 1.0);
-          (temp_v)[ind] = CLAMP(v, 0.0,1.0);
+          u = CLAMP(u, 0.0, 1.0);
+          v = CLAMP(v, 0.0, 1.0);
+          
+          #pragma omp atomic write
+          temp_u[ind] = u;
+          #pragma omp atomic write
+          temp_v[ind] = v;
         }
       }
     }
   }
 
+  }
+  #pragma omp barrier
+
   std::swap(g->u, temp_u);
   std::swap(g->v, temp_v);
+  #pragma omp barrier
 }
 
 double run_grid(grid_t *g, int steps, SimMode m) {
@@ -80,6 +96,7 @@ double run_grid(grid_t *g, int steps, SimMode m) {
   double *temp_v = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
   start_activity(ACTIVITY_JSTEP);
   for(int s = 0; s < steps; s++) {
+    
     jacobi_step(g, temp_u, temp_v);
   }
   finish_activity(ACTIVITY_JSTEP);
