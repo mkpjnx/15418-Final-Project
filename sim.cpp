@@ -50,7 +50,6 @@ double getGrad(grid_t *g, int i, int j, bool u) {
 }
 
 void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
-  #pragma omp parallel for
   for(int i = 0; i < g->nrow; i += STRIDE_I){
     for(int j = 0; j < g->ncol; j += STRIDE_J){
       for(int ii = 0; ii < STRIDE_I; ii ++){
