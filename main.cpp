@@ -7,7 +7,9 @@
 #include "sim.h"
 #include "cycleTimer.h"
 #include "instrument.h"
-
+#if defined(_OPENMP)
+  #include <omp.h>
+#endif
 
 void write_ppm(grid_t *g, int iter){
   char buf[50];
@@ -52,7 +54,7 @@ void write_raw(grid_t *g, int iter){
     for (int i=0; i< g->ncol; i++) {
 
       double dub = g->v[GINDEX(g,j,i)];
-      fprintf(fp, "%d,%d: %.9lf\n", j, i, dub);
+      fprintf(fp, "%d,%d: %a\n", j, i, dub);
     }
   }
     fclose(fp);
@@ -64,7 +66,8 @@ int main(int argc, char** argv){
   int steps = 500;
   int runs = 5;
   char opt;
-  while ((opt = getopt(argc, argv, "hvs:r:I")) != -1) {
+  size_t num_threads = 8;
+  while ((opt = getopt(argc, argv, "hvs:r:It:")) != -1) {
     switch (opt) {
     case 'h':
       printf("h for howdy\n");
@@ -81,18 +84,26 @@ int main(int argc, char** argv){
     case 'I':
       instrument = true;
       break;
+    case 't':
+      num_threads = atoi(optarg);
+      break;
     default:
       fprintf(stderr, "Usage: %s [-s steps] \n", argv[0]);
       exit(EXIT_FAILURE);
     }
   }
 
+  #if defined(_OPENMP)
+    omp_set_dynamic(0);     // Explicitly disable dynamic teams
+    omp_set_num_threads(num_threads);
+  #endif
+
 
   //args: Time steps
 
   track_activity(instrument); 
   start_activity(ACTIVITY_STARTUP);
-  grid_t *g = new_grid(100,100);
+  grid_t *g = new_grid(20,20);
   initialize_grid(g);
   finish_activity(ACTIVITY_STARTUP);
   double average = 0;

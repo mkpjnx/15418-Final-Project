@@ -1,9 +1,8 @@
 CXX=g++ -m64
-CXXFLAGS=-Icommon -Iobjs/ -O0 -Wall
+CXXFLAGS=-Icommon -Og -Wall
 OMP=-fopenmp -DOMP
 
 APP_NAME=grayscott
-OBJDIR=objs
 
 CXXFILES = main.cpp sim.cpp instrument.cpp
 DEPS = cycleTimer.h sim.h
