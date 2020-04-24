@@ -5,13 +5,24 @@
 #include <iostream>
 #include <getopt.h>
 #include "sim.h"
+#include "setup.h"
 #include "cycleTimer.h"
 #include "instrument.h"
 
+void Exit(){
+  #if MPI
+    MPI_Finalize();
+  #endif
+  exit(0);
+}
 
 void write_ppm(grid_t *g, int iter){
   char buf[50];
-  sprintf(buf, "out/out%d.ppm", iter);
+  #if MPI
+    sprintf(buf, "out/MPI%d.ppm", iter);
+  #else
+    sprintf(buf, "out/out%d.ppm", iter);
+  #endif
   FILE *fp = fopen(buf, "wb");
 
   if (!fp) {
@@ -39,32 +50,31 @@ void write_ppm(grid_t *g, int iter){
     fclose(fp);
 }
 
-void write_raw(grid_t *g, int iter){
-  char buf[50];
-  sprintf(buf, "out/out%d.txt", iter);
-  FILE *fp = fopen(buf, "wb");
-
-  if (!fp) {
-      fprintf(stderr, "Error: could not open file for write\n");
-      exit(1);
-  }
-  for (int j=g->nrow-1; j>=0; j--) {
-    for (int i=0; i< g->ncol; i++) {
-
-      double dub = g->v[GINDEX(g,j,i)];
-      fprintf(fp, "%d,%d: %.9lf\n", j, i, dub);
-    }
-  }
-    fclose(fp);
-}
-
 int main(int argc, char** argv){
   bool instrument = false;
   bool verbose = false;
   int steps = 500;
   int runs = 5;
+  int gridsize = 5000;
   char opt;
-  while ((opt = getopt(argc, argv, "hvs:r:I")) != -1) {
+
+  int process_count = 1;
+  int this_zone = 0;
+  int nzone = 0;
+
+  #if MPI
+    MPI_Init(NULL,NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &process_count);
+    MPI_Comm_rank(MPI_COMM_WORLD, &this_zone);
+    char* opstring = "hvs:r:Ig:"; //May be unnecessary
+  #else
+    char* opstring = "hvs:r:Ig:";
+  #endif
+
+  bool mpi_master = this_zone == 0;
+
+  
+  while ((opt = getopt(argc, argv, opstring)) != -1) {
     switch (opt) {
     case 'h':
       printf("h for howdy\n");
@@ -81,6 +91,9 @@ int main(int argc, char** argv){
     case 'I':
       instrument = true;
       break;
+    case 'g':
+      gridsize = atoi(optarg);
+      break;
     default:
       fprintf(stderr, "Usage: %s [-s steps] \n", argv[0]);
       exit(EXIT_FAILURE);
@@ -92,24 +105,38 @@ int main(int argc, char** argv){
 
   track_activity(instrument); 
   start_activity(ACTIVITY_STARTUP);
-  grid_t *g = new_grid(100,100);
+  grid_t *g = new_grid(gridsize, gridsize);
   initialize_grid(g);
+  state_t *s;
+  #if MPI
+  if (mpi_master){
+      s = divide_grid(g, process_count); //TODO
+  } else {
+      s = get_divide(process_count, this_zone); //TODO
+  }
+  init_zone(s);
+  #else
+    s = (state_t *)malloc(sizeof(state_t *));
+  #endif
+  s->g = g;
   finish_activity(ACTIVITY_STARTUP);
   double average = 0;
   double start;
   for(int i = 0; i < runs; i ++){
-    if (verbose) printf("Run:\t%d\n", i);
-    if (instrument) start = CycleTimer::currentSeconds();
-    write_raw(g,i);
-    run_grid(g, steps);
-    write_ppm(g, i);
-    if (instrument) average += CycleTimer::currentSeconds() - start;
+    if (verbose && mpi_master) printf("Run:\t%d\n", i);
+    if (instrument && mpi_master) start = CycleTimer::currentSeconds();
+    run_grid(s, steps);
+    if(mpi_master) write_ppm(g, i);
+    if (instrument && mpi_master) average += CycleTimer::currentSeconds() - start;
   }
   if (instrument){
     std::cout << "Average time per run:\t" << average/runs << std::endl;
     std::cout << "Average time per step:\t" << average/runs/steps << std::endl;
   }
   show_activity(instrument);
+  #if MPI
+    MPI_Finalize();
+  #endif
   return 0;
 }
 

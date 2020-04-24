@@ -55,9 +55,8 @@ double getGrad(grid_t *g, int i, int j, bool u) {
 }
 
 void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
-  #pragma omp parallel
+  
   { 
-  #pragma omp for
   for(int i = 0; i < g->nrow; i += STRIDE_I){
     for(int j = 0; j < g->ncol; j += STRIDE_J){
       for(int ii = 0; ii < STRIDE_I; ii ++){
@@ -74,9 +73,7 @@ void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
           u = CLAMP(u, 0.0, 1.0);
           v = CLAMP(v, 0.0, 1.0);
           
-          #pragma omp atomic write
           temp_u[ind] = u;
-          #pragma omp atomic write
           temp_v[ind] = v;
         }
       }
@@ -84,14 +81,13 @@ void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
   }
 
   }
-  #pragma omp barrier
 
   std::swap(g->u, temp_u);
   std::swap(g->v, temp_v);
-  #pragma omp barrier
 }
 
-double run_grid(grid_t *g, int steps, SimMode m) {
+double run_grid(state_t *s, int steps, SimMode m) {
+  grid_t *g = s->g;
   double *temp_u = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
   double *temp_v = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
   start_activity(ACTIVITY_JSTEP);
