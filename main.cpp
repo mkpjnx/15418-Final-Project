@@ -65,9 +65,10 @@ int main(int argc, char** argv){
   bool verbose = false;
   int steps = 500;
   int runs = 5;
+  int dim = 256;
   char opt;
   size_t num_threads = 8;
-  while ((opt = getopt(argc, argv, "hvs:r:It:")) != -1) {
+  while ((opt = getopt(argc, argv, "hvs:r:It:n:")) != -1) {
     switch (opt) {
     case 'h':
       printf("h for howdy\n");
@@ -87,6 +88,9 @@ int main(int argc, char** argv){
     case 't':
       num_threads = atoi(optarg);
       break;
+    case 'n':
+      dim = atoi(optarg);
+      break;
     default:
       fprintf(stderr, "Usage: %s [-s steps] \n", argv[0]);
       exit(EXIT_FAILURE);
@@ -103,7 +107,7 @@ int main(int argc, char** argv){
 
   track_activity(instrument); 
   start_activity(ACTIVITY_STARTUP);
-  grid_t *g = new_grid(20,20);
+  grid_t *g = new_grid(dim,dim);
   initialize_grid(g);
   finish_activity(ACTIVITY_STARTUP);
   double average = 0;
@@ -111,9 +115,9 @@ int main(int argc, char** argv){
   for(int i = 0; i < runs; i ++){
     if (verbose) printf("Run:\t%d\n", i);
     if (instrument) start = CycleTimer::currentSeconds();
-    write_raw(g,i);
+    //write_raw(g,i);
     run_grid(g, steps);
-    write_ppm(g, i);
+    //write_ppm(g, i);
     if (instrument) average += CycleTimer::currentSeconds() - start;
   }
   if (instrument){

@@ -30,7 +30,7 @@ void initialize_grid(grid_t *g, InitMode m) {
       //border
       int centery = g->nrow/2;
       int centerx = g->ncol/2;
-      int radius = 4;
+      int radius = centerx / 4;
       
       if ((i-centery) * (i-centery) + (j-centerx) * (j-centerx) <= radius * radius){
         g->u[ind] = 1.0/4;

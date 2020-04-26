@@ -1,5 +1,5 @@
 CXX=g++ -m64
-CXXFLAGS=-Icommon -Og -Wall
+CXXFLAGS=-Icommon -O3 -Wall
 OMP=-fopenmp -DOMP
 
 APP_NAME=grayscott
@@ -16,8 +16,7 @@ convert:
 	rm out/*.ppm
 
 clean:
-	rm -rf out/*.jpg
-	rm -rf out/*.ppm
+	rm -rf out/*
 	rm $(APP_NAME)-seq
 	rm $(APP_NAME)-omp
 	rm -rf sequential
