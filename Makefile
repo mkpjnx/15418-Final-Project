@@ -18,8 +18,7 @@ convert:
 	rm out/*.ppm
 
 clean:
-	rm -rf out/*.jpg
-	rm -rf out/*.ppm
+	rm -rf out/*
 	rm $(APP_NAME)-seq
 	rm $(APP_NAME)-mpi
 	rm -rf sequential

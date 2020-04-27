@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <utility>
 #include <algorithm>
-//TODO make a header and also fix Makefile to include
 
 //helper routine for calculating length of 
 static inline int get_length(state_t *s, int dir) {
@@ -40,8 +40,8 @@ state_t *init_zone(grid_t *g, int process_count, int this_zone, int h_divs) {
   s->nzones = process_count;
 
   //calculate rectangle
-  s->start_row = z_height * this_zone / h_divs;
-  s->start_col = z_height * (this_zone % h_divs);
+  s->start_row = z_height * (this_zone / h_divs);
+  s->start_col = z_width * (this_zone % h_divs);
   s->end_col = std::min(s->start_col + z_width, g->ncol);
   s->end_row = std::min(s->start_row + z_height, g->nrow);
 
@@ -74,7 +74,7 @@ state_t *init_zone(grid_t *g, int process_count, int this_zone, int h_divs) {
 void exchange_uv(state_t *s){
   grid_t *g = s->g;
 
-  //export steop
+  //export step
   for(int dir = 0; dir < 4; dir ++) {
     int zone = s->neighbors[dir];
     if(zone == -1) continue;
@@ -84,14 +84,15 @@ void exchange_uv(state_t *s){
     for(int k = 0; k < length; k++) {
       int grid_ind;
       switch(dir){
-        case NORTH: grid_ind = GINDEX(g, s->start_row, k);
-        case SOUTH: grid_ind = GINDEX(g, s->end_row - 1, k);
-        case EAST:  grid_ind = GINDEX(g, k, s->end_col - 1);
-        case WEST:  grid_ind = GINDEX(g, k, s->start_row);
+        case NORTH: grid_ind = GINDEX(g, s->start_row, s->start_col + k); break;
+        case SOUTH: grid_ind = GINDEX(g, s->end_row - 1, s->start_col + k); break;
+        case EAST:  grid_ind = GINDEX(g, s->start_row + k, s->end_col - 1); break;
+        case WEST:  grid_ind = GINDEX(g, s->start_row + k, s->start_col); break;
       }
 
       s->export_node_list[dir][k] = g->u[grid_ind];
       s->export_node_list[dir][k + length] = g->v[grid_ind];
+      //if(s->this_zone == 0) printf("dir %d\t grid_ind %d\n", dir, grid_ind);
     }
     //async send
     MPI_Isend(s->export_node_list[dir], 2*length, MPI_DOUBLE, zone, 0,
@@ -103,7 +104,7 @@ void exchange_uv(state_t *s){
     int zone = s->neighbors[dir];
     if(zone == -1) continue;
     int length = get_length(s, dir);
-    MPI_Recv(s->export_node_list[dir], 2*length, MPI_DOUBLE, zone, 0,
+    MPI_Recv(s->import_node_list[dir], 2*length, MPI_DOUBLE, zone, 0,
             MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
@@ -123,12 +124,11 @@ void exchange_uv(state_t *s){
     for(int k = 0; k < length; k++) {
       int grid_ind;
       switch(dir){
-        case NORTH: grid_ind = GINDEX(g, s->start_row - 1, k);
-        case SOUTH: grid_ind = GINDEX(g, s->end_row, k);
-        case EAST:  grid_ind = GINDEX(g, k, s->end_col);
-        case WEST:  grid_ind = GINDEX(g, k, s->start_col - 1);
+        case NORTH: grid_ind = GINDEX(g, s->start_row - 1, s->start_col + k); break;
+        case SOUTH: grid_ind = GINDEX(g, s->end_row, s->start_col + k); break;
+        case EAST:  grid_ind = GINDEX(g, s->start_row + k, s->end_col); break;
+        case WEST:  grid_ind = GINDEX(g, s->start_row + k, s->start_col - 1); break;
       }
-      
       g->u[grid_ind] = s->import_node_list[dir][k];
       g->v[grid_ind] = s->import_node_list[dir][k + length];
     }
@@ -145,13 +145,13 @@ void gather_uv(state_t *s){
   double *buf = (double*)malloc(sizeof(double) * z_width * z_height * 2);
 
   for(int z = 1; z < s->nzones; z++) {
-    int start_row = z_height * z / h_divs;
-    int start_col = z_height * (z % h_divs);
+    int start_row = z_height * (z / h_divs);
+    int start_col = z_width * (z % h_divs);
     int end_col = std::min(start_col + z_width, g->ncol);
     int end_row = std::min(start_row + z_height, g->nrow);
 
     int length = (end_col - start_col) * (end_row - start_row);
-    MPI_Recv(buf, 2*length, MPI_DOUBLE, z, z,
+    MPI_Recv(buf, 2*length, MPI_DOUBLE, z, 0,
             MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     int buf_ind = 0;
     for(int i = start_row; i < end_row; i++) {
@@ -177,7 +177,7 @@ void send_uv(state_t *s){
       buf_ind ++;
     }
   }
-  MPI_Isend(buf, 2*length, MPI_DOUBLE, 0, s->this_zone,
+  MPI_Isend(buf, 2*length, MPI_DOUBLE, 0, 0,
             MPI_COMM_WORLD, &request);
   MPI_Wait(&request, MPI_STATUS_IGNORE);
   free(buf);

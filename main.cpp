@@ -16,6 +16,16 @@ void Exit(){
   exit(0);
 }
 
+void usage(){
+  printf("-h\t help\n");
+  printf("-v\t verbose mode\n");
+  printf("-s S\t steps per run\n");
+  printf("-r R\t runs\n");
+  printf("-I\t verbose mode\n");
+  printf("-g G\t grid size\n");
+  printf("-d D\t horizantal divisions\n");
+}
+
 void write_raw(grid_t *g, int iter){
   char buf[50];
   sprintf(buf, "out/out%d.txt", iter);
@@ -78,6 +88,7 @@ int main(int argc, char** argv){
   char opt;
 
   int process_count = 1;
+  int horizantal_divisions = 1;
   int this_zone = 0;
   int nzone = 0;
 
@@ -85,10 +96,8 @@ int main(int argc, char** argv){
     MPI_Init(NULL,NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &process_count);
     MPI_Comm_rank(MPI_COMM_WORLD, &this_zone);
-    char* opstring = "hvs:r:Ig:"; //May be unnecessary
-  #else
-    char* opstring = "hvs:r:Ig:";
   #endif
+  char* opstring = "hvs:r:Ig:d:";
 
   bool mpi_master = this_zone == 0;
 
@@ -113,9 +122,13 @@ int main(int argc, char** argv){
     case 'g':
       gridsize = atoi(optarg);
       break;
+    case 'd':
+      horizantal_divisions = atoi(optarg);
+      break;
     default:
-      fprintf(stderr, "Usage: %s [-s steps] \n", argv[0]);
-      exit(EXIT_FAILURE);
+      printf("Unknown argument");
+      usage();
+      Exit();
     }
   }
 
@@ -125,21 +138,19 @@ int main(int argc, char** argv){
   track_activity(instrument); 
   start_activity(ACTIVITY_STARTUP);
   grid_t *g = new_grid(gridsize, gridsize);
-  state_t *s = init_zone(g, process_count, this_zone, 1);
+  state_t *s = init_zone(g, process_count, this_zone, horizantal_divisions);
+  if (s == NULL) {
+    fprintf(stderr, "Zone not initialized\n");
+    Exit();
+  }
   initialize_grid(g);
   finish_activity(ACTIVITY_STARTUP);
   double average = 0;
   double start;
   for(int i = 0; i < runs; i ++){
     if (verbose && mpi_master) printf("Run:\t%d\n", i);
-    if (instrument && mpi_master) start = CycleTimer::currentSeconds();
     run_grid(s, steps);
     if(mpi_master) write_ppm(g, i);
-    if (instrument && mpi_master) average += CycleTimer::currentSeconds() - start;
-  }
-  if (instrument){
-    std::cout << "Average time per run:\t" << average/runs << std::endl;
-    std::cout << "Average time per step:\t" << average/runs/steps << std::endl;
   }
   show_activity(instrument);
   #if MPI
