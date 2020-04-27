@@ -10,11 +10,12 @@
   #include <mpi.h>
 #endif
 
-#define STRIDE_I 3
-#define STRIDE_J 32
+#define STRIDE_I 1
+#define STRIDE_J 1
 
 enum InitMode {UNIFORM};
 enum SimMode {JACOBI};
+enum Direction {NORTH = 0, SOUTH, EAST, WEST};
 
 static const int K_SIZE = 3;
 
@@ -37,29 +38,29 @@ typedef struct {
 typedef struct{
   grid_t *g;
   int nzones;
+  int h_divs;
   /*** Info on this specific ZONE ***/
   int this_zone;
 
   //Information pertaining to the partitioning of the zones.
-  int* zone_starts;
   int start_row;
   int start_col;
   int end_row;
   int end_col;
 
   //The number of neighbors and which nodes we need to send and recieve from them
-  int *transfer_count;
+  int *neighbors;
   //Should only count for the ones this zone actually has neighbors with.
   //there will be a difference between the neghibors zid and their location
   //in the import and export lists 
   //TODO make this less confusing
-  int **export_node_list;
-  int **import_node_list;
+  double **export_node_list;
+  double **import_node_list;
 
   //Keep trake of the MPI requests after the sending
   #if MPI
     MPI_Request *requests;
-  #endif;
+  #endif
 } state_t;
 #define GINDEX(g,r,c) (((r)+1)*((g)->ncol+2)+((c)+1))
 

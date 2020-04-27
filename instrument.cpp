@@ -10,7 +10,7 @@
 #define MAX_THREAD 64
 
 /* Instrument different sections of program */
-static char *activity_name[ACTIVITY_COUNT] = { "overhead", "startup", "jacobi_step"};
+static char *activity_name[ACTIVITY_COUNT] = { "overhead", "startup", "jacobi_step", "local comm"};
 
 static bool tracking = false;
 static double global_start_time = 0.0;

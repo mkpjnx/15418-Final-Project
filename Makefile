@@ -1,5 +1,5 @@
 CXX=g++ -m64
-CXXFLAGS=-Icommon -Iobjs/ -Og -Wall -g
+CXXFLAGS=-Icommon -Iobjs/ -O3 -Wall -g
 MPI=-DMPI
 MPICC = mpicxx
 

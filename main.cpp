@@ -16,6 +16,25 @@ void Exit(){
   exit(0);
 }
 
+void write_raw(grid_t *g, int iter){
+  char buf[50];
+  sprintf(buf, "out/out%d.txt", iter);
+  FILE *fp = fopen(buf, "wb");
+
+  if (!fp) {
+      fprintf(stderr, "Error: could not open file for write\n");
+      exit(1);
+  }
+  for (int j=g->nrow-1; j>=0; j--) {
+    for (int i=0; i< g->ncol; i++) {
+
+      double dub = g->v[GINDEX(g,j,i)];
+      fprintf(fp, "%d,%d: %a\n", j, i, dub);
+    }
+  }
+    fclose(fp);
+}
+
 void write_ppm(grid_t *g, int iter){
   char buf[50];
   #if MPI
@@ -55,7 +74,7 @@ int main(int argc, char** argv){
   bool verbose = false;
   int steps = 500;
   int runs = 5;
-  int gridsize = 5000;
+  int gridsize = 500;
   char opt;
 
   int process_count = 1;
@@ -106,19 +125,8 @@ int main(int argc, char** argv){
   track_activity(instrument); 
   start_activity(ACTIVITY_STARTUP);
   grid_t *g = new_grid(gridsize, gridsize);
+  state_t *s = init_zone(g, process_count, this_zone, 1);
   initialize_grid(g);
-  state_t *s;
-  #if MPI
-  if (mpi_master){
-      s = divide_grid(g, process_count); //TODO
-  } else {
-      s = get_divide(process_count, this_zone); //TODO
-  }
-  init_zone(s);
-  #else
-    s = (state_t *)malloc(sizeof(state_t *));
-  #endif
-  s->g = g;
   finish_activity(ACTIVITY_STARTUP);
   double average = 0;
   double start;
