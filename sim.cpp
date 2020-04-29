@@ -84,23 +84,25 @@ double run_grid(state_t *state, int steps, SimMode m) {
   double *temp_u = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
   double *temp_v = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
   for(int s = 0; s < steps; s++) {
-    start_activity(ACTIVITY_JSTEP);
+    if (state->this_zone == 0) start_activity(ACTIVITY_JSTEP);
     jacobi_step(state, temp_u, temp_v);
-    finish_activity(ACTIVITY_JSTEP);
+    if (state->this_zone == 0) finish_activity(ACTIVITY_JSTEP);
     //exchange here
     #if MPI
-      start_activity(ACTIVITY_LOCAL_COMM);
+      if (state->this_zone == 0) start_activity(ACTIVITY_LOCAL_COMM);
       exchange_uv(state);
-      finish_activity(ACTIVITY_LOCAL_COMM);
+      if (state->this_zone == 0) finish_activity(ACTIVITY_LOCAL_COMM);
     #endif 
   }
   //send all to master
   #if MPI
+  if (state->this_zone == 0) start_activity(ACTIVITY_GLOBAL_COMM);
   if(state->this_zone == 0){
     gather_uv(state);
   } else {
     send_uv(state);
   }
+  if (state->this_zone == 0) finish_activity(ACTIVITY_GLOBAL_COMM);
   #endif 
   return 0;
 }
