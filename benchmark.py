@@ -3,86 +3,106 @@ import csv
 import subprocess
 import random
 
+runs = 8
+average = 5
 mpi = True
+omp = False
 perf = True
-topText = 0
-args = 4
-runs = 1
-average = 1
-topText = ("graph size, steps, divides, processes, " +
-    "time startup, per startup, " +
+if (omp and mpi): print("DO NOT DO THIS")
+
+#TEXT THAT WILL BE DESPLAYED AT THE TOP
+#AND PARAMATERS THAT ARE BEING TESTED
+paramaters = 4 #0: startup 1: jacobi 2: unknown 3: elapsed
+topText = "graph size, steps, "
+if mpi: topText += "divides, processes, "
+if omp: topText += "threads, "
+topText += ("time startup, per startup, " +
     "time jacobi, per jacobi, "
     "time unknown, per unknown, ")
-
-if mpi:
-  topText += ("time local com, per local com, " +
-    "time global com, per global com, ")
-  args += 2
-
+if mpi: #comm if  MPI
+  topText += ("time local com, per local com, time global com, per global com, ")
+  paramaters += 2
 topText += ("time elapsed, per elapsed, " +
     "cache references, cache misses, cpi\n")
 
+#INCLUDE THE PERF RESULTS
+perfstr = []
+perfcount = 0
+if perf:
+  perfParamaters = ["cache-references", "cache-misses", "cycles"]
+  perfstr = ["perf",  "stat", "-e", ",".join(perfParamaters)]
+  perfcount = len(perfParamaters) #make sure to equal the number of things in perf
 
-f2 = open("Log/run.csv", "w")
+#PREPARE THE CSV FILE
+f2 = open("Log/benchmark.csv", "w")
 f2.write(topText)
 
-nps = [1,2,3,4,5,6,7,8]
+#PRESET VALUES TO CHANGE OVER RUNS
+nps = [(i)%8+1  for i in range(runs)]
+ts  = [(i)%8+1 for i in range(runs)]
+gs  = [256 for i in range(runs)]
+ss  = [1000 for i in range(runs)]
+
+#OVERALL RUNS
 for r in range(runs):
   print("range ", r)
-  g = 256
-  s = 1000
-  np = nps[r]
-  d = 1
-  times = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-  percents = [0,0,0,0,0,0,0,0,0,0,0]
+  g = gs[r]   #grid size
+  s = ss[r]    #steps
+  np = nps[r] #number of processes MPI ONLY
+  d = 1       #divides MPI ONLY
+  t = ts[r]   #threads OMP ONLY
+  times = [0 for x in range(paramaters)]
+  perfRes = [0 for x in range(perfcount)]
+  percents = [0 for x in range(paramaters)]
+
+  #DONE FOR AVERAGING
   for i in range(average):
-    if perf:
-      command = ["perf",  "stat", "-e", "cache-references,cache-misses,cycles"]
-      perfcount = 3
-    else:
-      command = []
-      perfcount = 0
+
+    #DIFFERENT COMMANDS
     if mpi:
-      command += ["mpirun", "-np", str(np), "./grayscott-mpi", "-g", str(g), "-r", "1", "-s", str(s), "-d", str(d), "-I"]
+      command = ["mpirun", "-np", str(np), "./grayscott-mpi", "-g", str(g), "-r", "1", "-s", str(s), "-d", str(d), "-I"]
+    elif omp:
+      command = ["./grayscott-omp", "-g", str(g), "-r", "1", "-s", str(s), "-t", str(t), "-I"]
     else:
-      command += ["./grayscott-seq" , "-g", str(g), "-r", "1", "-s", str(s), "-I"]
-    print("iteration", i)
+      command = ["./grayscott-seq" , "-g", str(g), "-r", "1", "-s", str(s), "-I"]
+    print("iteration", i, " ".join(perfstr + command))
 
-    ou = open("Log/log1.txt", "wb")
-    er = open("Log/log1.txt", "a")
-    subprocess.run(command, stdout=ou, stderr=er)
+    #REDIRECT STDOUT AND STDIN
+    logfile = "Log/log" + str(r) + ".txt"
+    ou = open(logfile, "wb") #for instrumentation
+    er = open(logfile, "a")  #for perf
+    subprocess.run((perfstr + command), stdout=ou, stderr=er)
 
-    f1 = open("Log/log1.txt", "r")
-    for a in range(args):
-      line = f1.readline()
-      spl = line.split()
-      times[a] += float(spl[0])
-      percents[a] += float(spl[2])
+    #BEGIN READING FROM TXT
+    f1 = open(logfile, "r")
+    for p in range(paramaters):
+      split = f1.readline().split()
+      times[p] += float(split[0])
+      percents[p] += float(split[2])
 
-    for f in range(3):
-      f1.readline()
-    for f in range(perfcount):
-      line = f1.readline()
-      spl  = line.split()
-      val = float(spl[0].replace(",",""))
-      times[args+f] += val
+    if perf:
+      [f1.readline() for IGNORE_LINES in range(3)] #ignore black perf response
+      for p in range(perfcount):
+        split = f1.readline().split()
+        perfRes[p] += float(split[0].replace(",","")) #replace 999,999 to 999999
 
-  description = str(g) + ", " + str(s) + ", "  + str(d) + ", " + str(np)
+
+  #WRITE THE SIMULATION DESCRIPTION
+  description = str(g) + ", " + str(s) 
+  if mpi: description += ", " + str(d) + ", " + str(np)
+  if omp: description += ", " + str(t)
   f2.write(description)
-  for a in range(args):
-    time = times[a]/average
-    percent = percents[a]/average
+
+  #WRITE OUT THE AVERAGE VALUES
+  for p in range(paramaters):
+    time = times[p]/average
+    percent = percents[p]/average
     st = ", " + str(time) + ", " + str(percent)
     f2.write(st)
-  for p in range(perfcount):
-    ref = times[args + p]/average
-    st = ", " + str(ref)
-    f2.write (st)
+  if perf:
+    for p in range(perfcount):
+      ref = perfRes[p]/average
+      st = ", " + str(ref)
+      f2.write (st)
     
-  f2.write("\n")
-
-topText = 0
-args = 4
-topText = ("graph size, steps, divides, processes, " +
-    "time startup, per startup, " +
-    "time jacobi, per jacobi, ")
+  f2.write("\n") #
