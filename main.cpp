@@ -113,8 +113,8 @@ int main(int argc, char** argv){
   for(int i = 0; i < runs; i ++){
     if (verbose) printf("Run:\t%d\n", i);
     //write_raw(g,i);
-    run_grid(g, steps);
-    //write_ppm(g, i);
+    run_grid(g, steps, M_REDBLACK);
+    write_ppm(g, i);
   }
   show_activity(instrument);
   return 0;
