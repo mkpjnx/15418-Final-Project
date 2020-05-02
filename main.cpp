@@ -150,7 +150,7 @@ int main(int argc, char** argv){
   for(int i = 0; i < runs; i ++){
     if (verbose && mpi_master) printf("Run:\t%d\n", i);
     run_grid(s, steps);
-    //if(mpi_master) write_raw(g, i);
+    if(mpi_master) write_ppm(g, i);
   }
   if (mpi_master){
     show_activity(instrument);

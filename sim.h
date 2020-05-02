@@ -14,7 +14,7 @@
 #define STRIDE_J 1
 
 enum InitMode {UNIFORM};
-enum SimMode {JACOBI};
+enum SimMode {M_JACOBI, M_REDBLACK};
 enum Direction {NORTH = 0, SOUTH, EAST, WEST};
 
 static const int K_SIZE = 3;
@@ -33,6 +33,9 @@ typedef struct {
   int ncol;
   double *u; //padded +2
   double *v; //padded +2
+
+  double *temp_u; //padded +2
+  double *temp_v; //padded +2
 } grid_t;
 
 typedef struct{
@@ -70,6 +73,6 @@ grid_t *new_grid(int nrow, int ncol);
 void free_grid(grid_t *g);
 void initialize_grid(grid_t *g, InitMode m = UNIFORM);
 
-double run_grid(state_t *s, int steps, SimMode m = JACOBI);
+double run_grid(state_t *s, int steps, SimMode m = M_JACOBI);
 
 #endif
