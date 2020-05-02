@@ -54,13 +54,13 @@ def generateScript(scriptName = "latedays.sh", argString = "", outputName = "ben
     scriptFile.write("# Limit execution time to 30 minutes\n")    
     scriptFile.write("#PBS -lwalltime=0:30:00\n")    
     scriptFile.write("# Allocate all available CPUs on a single node\n")    
-    scriptFile.write("#PBS -l nodes=1:ppn=24\n")    
+    scriptFile.write("#PBS -l nodes=4:ppn=4\n")    
     scriptFile.write("\n")    
     scriptFile.write("# Go to the directory from which you submitted your job\n")    
     scriptFile.write("cd $PBS_O_WORKDIR\n")    
     scriptFile.write("\n")    
     scriptFile.write("# Execute the performance evaluation program and store summary in %s\n" % outputName)
-    scriptFile.write("./benchmark.py %s\n" % argString)
+    scriptFile.write("python ./benchmark.py %s\n" % argString)
     scriptFile.close()
     return True
 
