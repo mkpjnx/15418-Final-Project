@@ -1,8 +1,9 @@
+#! /opt/python36/bin/python3
 import csv
 import subprocess
 import random
 
-mpi = False
+mpi = True
 topText = 0
 args = 4
 topText = ("graph size, steps, divides, processes, " +
@@ -20,25 +21,25 @@ topText += ("time unknown, per unknown, " +
 f2 = open("Log/run.csv", "w")
 f2.write(topText)
 
-nps = [1,2,3,4,5,6,7,8]
-runs = 5
-for t in range(8):
+nps = [4,8,16]
+runs = 1
+for t in range(3):
   print("range ", t)
-  g = 500 * t
-  s = 100
-  d = 1
-  np = 1# nps[t]
+  g = 5000
+  s = 1000
+  d = 2
+  np = nps[t]
   times = [0,0,0,0,0,0]
   percents = [0,0,0,0,0,0]
   for i in range(runs):
     command = ["./grayscott-seq" , "-g", str(g), "-r", "1", "-s", str(s), "-d", str(d), "-I"]
     if mpi:
-      command = ["mpirun", "-np", str(np), "./grayscott-mpi", "-g", str(g), "-r", "1", "-s", str(s), "-d", str(d), "-I"]
+      command = ["mpirun", "-np", str(np), "./grayscott-mpi", "-g", str(g), "-v", "-r", "1", "-s", str(s), "-d", str(d), "-I"]
     print("iteration", i)
 
-    ou = open("Log/log1.txt", "wb")
-    subprocess.run(command, stdout=ou)
-
+    ou = open("Log/log_procs_{}.txt".format(np), "ab")
+    subprocess.call(command, stdout=ou)
+'''
     f1 = open("Log/log1.txt", "r")
     for a in range(args):
       line = f1.readline()
@@ -46,12 +47,14 @@ for t in range(8):
       times[a] += int(spl[0])
       percents[a] += float(spl[2])
 
-  description = str(g) + ", " + str(s) + ", " + str(d) + ", " + str(np)
+
+  description = "%s,%s,%s,%s"%(g,s,d,np)
   f2.write(description)
   for a in range(args):
     time = times[a]/runs
     percent = percents[a]/runs
-    st = ", " + str(time) + ", " + str(percent)
+    st = ",%s,%s"%(time,percent)
     f2.write(st)
     
   f2.write("\n")
+  '''

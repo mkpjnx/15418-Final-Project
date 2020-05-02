@@ -1,6 +1,6 @@
 CXX=g++ -m64
 CXXFLAGS=-Icommon -Iobjs/ -O3 -Wall -g
-MPI=-DMPI
+MPI= -DMPI -DOMPI_SKIP_MPICXX
 MPICC = mpicxx
 
 APP_NAME=grayscott
