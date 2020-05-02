@@ -57,6 +57,8 @@ double getGrad(grid_t *g, int i, int j, bool u) {
 }
 
 void jacobi_step(state_t *s){
+  if (s->this_zone == 0) start_activity(ACTIVITY_SSTEP);
+
   grid_t *g = s->g;
   for(int i = s->start_row; i < s->end_row; i ++){
     for(int j = s->start_col; j < s->end_col; j ++){
@@ -76,29 +78,33 @@ void jacobi_step(state_t *s){
   }
   std::swap(g->u, g->temp_u);
   std::swap(g->v, g->temp_v);
+
+  if (s->this_zone == 0) finish_activity(ACTIVITY_SSTEP);
 }
 
-void red_black_step(state_t *s){
+void red_black_step(state_t *s, int parity){
+  if (s->this_zone == 0) start_activity(ACTIVITY_SSTEP);
+
   grid_t *g = s->g;
-  for(int parity = 0; parity < 2; parity++){
-    for(int i = s->start_row; i < s->end_row; i ++){
-      for(int j = s->start_col; j < s->end_col; j ++){
-        if((i+j) % 2 == parity) continue;
-        int ind = GINDEX(g, i, j);
-        double Du = DU * getGrad(g, i, j,true);
-        double Dv = DV * getGrad(g, i, j,false);
-        double u = g->u[ind];
-        double v = g->v[ind];
-        u += Du - u*v*v + FEED_RATE * (1.0 - u);
-        v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
-        u = CLAMP(u, 0.0, 1.0);
-        v = CLAMP(v, 0.0, 1.0);
-        
-        g->u[ind] = u;
-        g->v[ind] = v;
-      }
-    } 
-  }
+  for(int i = s->start_row; i < s->end_row; i ++){
+    for(int j = s->start_col; j < s->end_col; j ++){
+      if((i+j) % 2 == parity) continue;
+      int ind = GINDEX(g, i, j);
+      double Du = DU * getGrad(g, i, j,true);
+      double Dv = DV * getGrad(g, i, j,false);
+      double u = g->u[ind];
+      double v = g->v[ind];
+      u += Du - u*v*v + FEED_RATE * (1.0 - u);
+      v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
+      u = CLAMP(u, 0.0, 1.0);
+      v = CLAMP(v, 0.0, 1.0);
+      
+      g->u[ind] = u;
+      g->v[ind] = v;
+    }
+  } 
+  
+  if (s->this_zone == 0) start_activity(ACTIVITY_SSTEP);
 }
 
 double run_grid(state_t *state, int steps, SimMode m) {
@@ -109,23 +115,25 @@ double run_grid(state_t *state, int steps, SimMode m) {
     g->temp_v = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
   }
 
-  for(int s = 0; s < steps; s++) {
-    if (state->this_zone == 0) start_activity(ACTIVITY_JSTEP);
-    
+  for(int s = 0; s < steps; s++) {    
     if(m == M_JACOBI) {
       jacobi_step(state);
+      #if MPI
+        begin_exchange_uv(state);
+        finish_exchange_uv(state);
+      #endif
     } else if (m == M_REDBLACK) {
-      red_black_step(state);
+      red_black_step(state, 0);
+      #if MPI
+        begin_exchange_uv(state);
+        finish_exchange_uv(state);
+      #endif
+      red_black_step(state, 1);
+      #if MPI
+        begin_exchange_uv(state);
+        finish_exchange_uv(state);
+      #endif
     }
-    
-    
-    if (state->this_zone == 0) finish_activity(ACTIVITY_JSTEP);
-    //exchange here
-    #if MPI
-      if (state->this_zone == 0) start_activity(ACTIVITY_LOCAL_COMM);
-      exchange_uv(state);
-      if (state->this_zone == 0) finish_activity(ACTIVITY_LOCAL_COMM);
-    #endif 
   }
   //send all to master
   #if MPI

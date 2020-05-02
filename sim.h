@@ -13,6 +13,10 @@
 #define STRIDE_I 1
 #define STRIDE_J 1
 
+#define GINDEX(g,r,c) (((r)+1)*((g)->ncol+2)+((c)+1))
+
+#define CLAMP(x, minimum, maximum) std::max(minimum, std::min(x, maximum))
+
 enum InitMode {UNIFORM};
 enum SimMode {M_JACOBI, M_REDBLACK};
 enum Direction {NORTH = 0, SOUTH, EAST, WEST};
@@ -62,17 +66,15 @@ typedef struct{
 
   //Keep trake of the MPI requests after the sending
   #if MPI
-    MPI_Request *requests;
+    MPI_Request *send_requests;
+    MPI_Request *recv_requests;
   #endif
 } state_t;
-#define GINDEX(g,r,c) (((r)+1)*((g)->ncol+2)+((c)+1))
-
-#define CLAMP(x, minimum, maximum) std::max(minimum, std::min(x, maximum))
 
 grid_t *new_grid(int nrow, int ncol);
 void free_grid(grid_t *g);
 void initialize_grid(grid_t *g, InitMode m = UNIFORM);
 
-double run_grid(state_t *s, int steps, SimMode m = M_JACOBI);
+double run_grid(state_t *s, int steps, SimMode m = M_REDBLACK);
 
 #endif

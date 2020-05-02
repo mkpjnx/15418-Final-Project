@@ -64,14 +64,18 @@ state_t *init_zone(grid_t *g, int process_count, int this_zone, int h_divs) {
   }
   
   #if MPI
-  s->requests = (MPI_Request *)malloc(sizeof(MPI_Request) * 4);
+  s->send_requests = (MPI_Request *)malloc(sizeof(MPI_Request) * 4);
+  s->recv_requests = (MPI_Request *)malloc(sizeof(MPI_Request) * 4);
   #endif
   return s;
 }
 
 #if MPI
 
-void exchange_uv(state_t *s){
+
+void begin_exchange_uv(state_t *s){
+  if (s->this_zone == 0) start_activity(ACTIVITY_LOCAL_COMM);
+
   grid_t *g = s->g;
 
   //export step
@@ -92,27 +96,36 @@ void exchange_uv(state_t *s){
 
       s->export_node_list[dir][k] = g->u[grid_ind];
       s->export_node_list[dir][k + length] = g->v[grid_ind];
-      //if(s->this_zone == 0) printf("dir %d\t grid_ind %d\n", dir, grid_ind);
     }
     //async send
     MPI_Isend(s->export_node_list[dir], 2*length, MPI_DOUBLE, zone, 0,
-            MPI_COMM_WORLD, &s->requests[dir]);
+            MPI_COMM_WORLD, &s->send_requests[dir]);
   }
 
-  //recv
+  //async recv
   for(int dir = 0; dir < 4; dir ++) {
     int zone = s->neighbors[dir];
     if(zone == -1) continue;
     int length = get_length(s, dir);
-    MPI_Recv(s->import_node_list[dir], 2*length, MPI_DOUBLE, zone, 0,
-            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Irecv(s->import_node_list[dir], 2*length, MPI_DOUBLE, zone, 0,
+            MPI_COMM_WORLD, &s->recv_requests[dir]);
   }
+
+  if (s->this_zone == 0) finish_activity(ACTIVITY_LOCAL_COMM);
+}
+
+
+void finish_exchange_uv(state_t *s){
+  if (s->this_zone == 0) start_activity(ACTIVITY_LOCAL_COMM);
+  
+  grid_t *g = s->g;
 
   //wait
   for(int dir = 0; dir < 4; dir ++) {
     int zone = s->neighbors[dir];
     if(zone == -1) continue;
-    MPI_Wait(&s->requests[dir], MPI_STATUS_IGNORE);
+    MPI_Wait(&s->send_requests[dir], MPI_STATUS_IGNORE);
+    MPI_Wait(&s->recv_requests[dir], MPI_STATUS_IGNORE);
   }
   
   //load into g
@@ -133,6 +146,8 @@ void exchange_uv(state_t *s){
       g->v[grid_ind] = s->import_node_list[dir][k + length];
     }
   }
+
+  if (s->this_zone == 0) finish_activity(ACTIVITY_LOCAL_COMM);
 }
 
 //gather after all runs are completed
