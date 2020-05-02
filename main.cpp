@@ -68,7 +68,7 @@ int main(int argc, char** argv){
   int dim = 256;
   char opt;
   size_t num_threads = 8;
-  while ((opt = getopt(argc, argv, "hvs:r:It:n:")) != -1) {
+  while ((opt = getopt(argc, argv, "hvs:r:It:g:")) != -1) {
     switch (opt) {
     case 'h':
       printf("h for howdy\n");
@@ -88,7 +88,7 @@ int main(int argc, char** argv){
     case 't':
       num_threads = atoi(optarg);
       break;
-    case 'n':
+    case 'g':
       dim = atoi(optarg);
       break;
     default:
@@ -110,19 +110,11 @@ int main(int argc, char** argv){
   grid_t *g = new_grid(dim,dim);
   initialize_grid(g);
   finish_activity(ACTIVITY_STARTUP);
-  double average = 0;
-  double start;
   for(int i = 0; i < runs; i ++){
     if (verbose) printf("Run:\t%d\n", i);
-    if (instrument) start = CycleTimer::currentSeconds();
     //write_raw(g,i);
     run_grid(g, steps);
     //write_ppm(g, i);
-    if (instrument) average += CycleTimer::currentSeconds() - start;
-  }
-  if (instrument){
-    std::cout << "Average time per run:\t" << average/runs << std::endl;
-    std::cout << "Average time per step:\t" << average/runs/steps << std::endl;
   }
   show_activity(instrument);
   return 0;

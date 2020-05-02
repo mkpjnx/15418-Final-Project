@@ -74,9 +74,9 @@ void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
           u = CLAMP(u, 0.0, 1.0);
           v = CLAMP(v, 0.0, 1.0);
           
-          #pragma omp atomic write
+          //#pragma omp atomic write
           temp_u[ind] = u;
-          #pragma omp atomic write
+          //#pragma omp atomic write
           temp_v[ind] = v;
         }
       }
@@ -84,11 +84,11 @@ void jacobi_step(grid_t *g, double *temp_u, double *temp_v){
   }
 
   }
-  #pragma omp barrier
+  //#pragma omp barrier
 
   std::swap(g->u, temp_u);
   std::swap(g->v, temp_v);
-  #pragma omp barrier
+  //#pragma omp barrier
 }
 
 double run_grid(grid_t *g, int steps, SimMode m) {
