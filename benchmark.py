@@ -3,7 +3,7 @@ import csv
 import subprocess
 import random
 
-runs = 5
+runs = 8
 repeats = 5
 mpi = True
 omp = False
@@ -42,7 +42,7 @@ f2.write(topText)
 nps = [(i)%8+1  for i in range(runs)]
 ts  = [(i)%8+1 for i in range(runs)]
 gs  = [500 for i in range(runs)]
-ss  = [100 for i in range(runs)]
+ss  = [1000 for i in range(runs)]
 
 #OVERALL RUNS
 for r in range(runs):
