@@ -3,11 +3,12 @@ import csv
 import subprocess
 import random
 
-runs = 8
-average = 5
+runs = 5
+repeats = 5
 mpi = True
 omp = False
-perf = True
+perf = False
+doAverage = False
 if (omp and mpi): print("DO NOT DO THIS")
 
 #TEXT THAT WILL BE DESPLAYED AT THE TOP
@@ -40,8 +41,8 @@ f2.write(topText)
 #PRESET VALUES TO CHANGE OVER RUNS
 nps = [(i)%8+1  for i in range(runs)]
 ts  = [(i)%8+1 for i in range(runs)]
-gs  = [256 for i in range(runs)]
-ss  = [1000 for i in range(runs)]
+gs  = [500 for i in range(runs)]
+ss  = [100 for i in range(runs)]
 
 #OVERALL RUNS
 for r in range(runs):
@@ -51,12 +52,17 @@ for r in range(runs):
   np = nps[r] #number of processes MPI ONLY
   d = 1       #divides MPI ONLY
   t = ts[r]   #threads OMP ONLY
-  times = [0 for x in range(paramaters)]
-  perfRes = [0 for x in range(perfcount)]
-  percents = [0 for x in range(paramaters)]
+  if doAverage:
+    times = [0 for x in range(paramaters)]
+    perfRes = [0 for x in range(perfcount)]
+    percents = [0 for x in range(paramaters)]
+  else:
+    times = [[] for x in range(paramaters)]
+    perfRes = [[] for x in range(perfcount)]
+    percents = [[] for x in range(paramaters)]
 
   #DONE FOR AVERAGING
-  for i in range(average):
+  for i in range(repeats):
 
     #DIFFERENT COMMANDS
     if mpi:
@@ -77,32 +83,60 @@ for r in range(runs):
     f1 = open(logfile, "r")
     for p in range(paramaters):
       split = f1.readline().split()
-      times[p] += float(split[0])
-      percents[p] += float(split[2])
+      if doAverage:
+        times[p] += float(split[0])
+        percents[p] += float(split[2])
+      else:
+        times[p].append(float(split[0]))
+        percents[p].append(float(split[2]))
+
+      
 
     if perf:
       [f1.readline() for IGNORE_LINES in range(3)] #ignore black perf response
       for p in range(perfcount):
         split = f1.readline().split()
-        perfRes[p] += float(split[0].replace(",","")) #replace 999,999 to 999999
+        if doAverage:
+          perfRes[p] += float(split[0].replace(",","")) #replace 999,999 to 999999
+        else:
+          perfRes[p].append(float(split[0].replace(",","")))
+        
 
 
   #WRITE THE SIMULATION DESCRIPTION
   description = str(g) + ", " + str(s) 
   if mpi: description += ", " + str(d) + ", " + str(np)
   if omp: description += ", " + str(t)
-  f2.write(description)
 
-  #WRITE OUT THE AVERAGE VALUES
-  for p in range(paramaters):
-    time = times[p]/average
-    percent = percents[p]/average
-    st = ", " + str(time) + ", " + str(percent)
-    f2.write(st)
-  if perf:
-    for p in range(perfcount):
-      ref = perfRes[p]/average
-      st = ", " + str(ref)
-      f2.write (st)
+  if doAverage:
+    f2.write(description)
+
+    #WRITE OUT THE AVERAGE VALUES
+    for p in range(paramaters):
+      time = times[p]/repeats
+      percent = percents[p]/repeats
+      st = ", " + str(time) + ", " + str(percent)
+      f2.write(st)
+    if perf:
+      for p in range(perfcount):
+        ref = perfRes[p]/repeats
+        st = ", " + str(ref)
+        f2.write (st)
+    f2.write("\n") #
+  else:
+    for t in range(repeats):
+      f2.write(description)
+
+      for p in range(paramaters):
+        time = times[p][t]
+        percent = percents[p][t]
+        st = ", " + str(time) + ", " + str(percent)
+        f2.write(st)
+      if perf:
+        for p in range(perfcount):
+          ref = perfRes[p][t]
+          st = ", " + str(ref)
+          f2.write (st)
+      f2.write("\n")
+          
     
-  f2.write("\n") #
