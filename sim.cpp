@@ -104,7 +104,7 @@ void red_black_step(state_t *s, int parity){
     }
   } 
   
-  if (s->this_zone == 0) start_activity(ACTIVITY_SSTEP);
+  if (s->this_zone == 0) finish_activity(ACTIVITY_SSTEP);
 }
 
 double run_grid(state_t *state, int steps, SimMode m) {
