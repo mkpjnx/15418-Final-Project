@@ -137,20 +137,19 @@ int main(int argc, char** argv){
 
   track_activity(instrument); 
   if (mpi_master) start_activity(ACTIVITY_STARTUP);
-  grid_t *g = new_grid(gridsize, gridsize);
-  state_t *s = init_zone(g, process_count, this_zone, horizantal_divisions);
+  state_t *s = init_zone(gridsize, gridsize, process_count, this_zone, horizantal_divisions);
   if (s == NULL) {
     fprintf(stderr, "Zone not initialized\n");
     Exit();
   }
-  initialize_grid(g);
+  initialize_grid(s);
   if (mpi_master) finish_activity(ACTIVITY_STARTUP);
   double average = 0;
   double start;
   for(int i = 0; i < runs; i ++){
     if (verbose && mpi_master) printf("Run:\t%d\n", i);
-    run_grid(s, steps);
-    if(mpi_master) write_ppm(g, i);
+    run_grid(s, steps, M_REDBLACK);
+    if(mpi_master) write_ppm(s->g, i);
   }
   if (mpi_master){
     show_activity(instrument);

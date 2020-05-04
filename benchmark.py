@@ -7,8 +7,8 @@ runs = 8
 repeats = 5
 mpi = True
 omp = False
-perf = False
-doAverage = False
+perf = True
+doAverage = True
 if (omp and mpi): print("DO NOT DO THIS")
 
 #TEXT THAT WILL BE DESPLAYED AT THE TOP
@@ -39,9 +39,9 @@ f2 = open("Log/benchmark.csv", "w")
 f2.write(topText)
 
 #PRESET VALUES TO CHANGE OVER RUNS
-nps = [(i)%8+1  for i in range(runs)]
-ts  = [(i)%8+1 for i in range(runs)]
-gs  = [500 for i in range(runs)]
+nps = [4  for i in range(runs)]
+ts  = [4 for i in range(runs)]
+gs  = [200, 250, 500, 750, 1000, 1250, 1500, 1750, 2000]
 ss  = [1000 for i in range(runs)]
 
 #OVERALL RUNS

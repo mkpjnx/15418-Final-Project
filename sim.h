@@ -46,6 +46,9 @@ typedef struct{
   grid_t *g;
   int nzones;
   int h_divs;
+
+  int nrow;
+  int ncol;
   /*** Info on this specific ZONE ***/
   int this_zone;
 
@@ -73,7 +76,7 @@ typedef struct{
 
 grid_t *new_grid(int nrow, int ncol);
 void free_grid(grid_t *g);
-void initialize_grid(grid_t *g, InitMode m = UNIFORM);
+void initialize_grid(state_t *s, InitMode m = UNIFORM);
 
 double run_grid(state_t *s, int steps, SimMode m = M_REDBLACK);
 

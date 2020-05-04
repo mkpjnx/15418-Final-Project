@@ -24,16 +24,20 @@ void free_grid(grid_t *g) {
   free(g);
 }
 
-void initialize_grid(grid_t *g, InitMode m) {
+void initialize_grid(state_t *s, InitMode m) {
+  grid_t *g = s->g;
   for(int i = -1; i <= g->nrow; i++) {
     for(int j = -1; j <= g->ncol; j++) {
       int ind = GINDEX(g,i,j);
+
+      int real_i = i + s->start_row;
+      int real_j = j + s->start_col;
       //border
-      int centery = g->nrow/2;
-      int centerx = g->ncol/2;
+      int centery = s->nrow/3;
+      int centerx = s->ncol/3;
       int radius = centerx / 4;
       
-      if ((i-centery) * (i-centery) + (j-centerx) * (j-centerx) <= radius * radius){
+      if ((real_i-centery) * (real_i-centery) + (real_j-centerx) * (real_j-centerx) <= radius * radius){
         g->u[ind] = 1.0/4;
         g->v[ind] = 1.0/2;
       } else {
@@ -60,8 +64,8 @@ void jacobi_step(state_t *s){
   if (s->this_zone == 0) start_activity(ACTIVITY_SSTEP);
 
   grid_t *g = s->g;
-  for(int i = s->start_row; i < s->end_row; i ++){
-    for(int j = s->start_col; j < s->end_col; j ++){
+  for(int i = 0; i < g->nrow; i ++){
+    for(int j = 0; j < g->ncol; j ++){
       int ind = GINDEX(g, i, j);
       double Du = DU * getGrad(g, i, j,true);
       double Dv = DV * getGrad(g, i, j,false);
@@ -84,10 +88,10 @@ void jacobi_step(state_t *s){
 
 void red_black_step(state_t *s, int parity){
   if (s->this_zone == 0) start_activity(ACTIVITY_SSTEP);
-
+ 
   grid_t *g = s->g;
-  for(int i = s->start_row; i < s->end_row; i ++){
-    for(int j = s->start_col; j < s->end_col; j ++){
+  for(int i = 0; i < g->nrow; i ++){
+    for(int j = 0; j < g->ncol; j ++){
       if((i+j) % 2 == parity) continue;
       int ind = GINDEX(g, i, j);
       double Du = DU * getGrad(g, i, j,true);
