@@ -18,7 +18,7 @@ topText = "graph size, steps, "
 if mpi: topText += "divides, processes, "
 if omp: topText += "threads, "
 topText += ("time startup, per startup, " +
-    "time jacobi, per jacobi, "
+    "time step, per step, "
     "time unknown, per unknown, ")
 if mpi: #comm if  MPI
   topText += ("time local com, per local com, time global com, per global com, ")
