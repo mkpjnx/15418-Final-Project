@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /opt/python36/bin/python3
 import csv
 import subprocess
 import random
