@@ -6,7 +6,7 @@ void begin_exchange_uv(state_t *s);
 
 void finish_exchange_uv(state_t *s);
 
-void gather_uv(state_t *s);
+grid_t *gather_uv(state_t *s);
 
 void send_uv(state_t *s);
 

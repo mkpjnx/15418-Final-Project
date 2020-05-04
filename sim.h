@@ -78,6 +78,6 @@ grid_t *new_grid(int nrow, int ncol);
 void free_grid(grid_t *g);
 void initialize_grid(state_t *s, InitMode m = UNIFORM);
 
-double run_grid(state_t *s, int steps, SimMode m = M_REDBLACK);
+grid_t *run_grid(state_t *s, int steps, SimMode m = M_REDBLACK);
 
 #endif

@@ -33,8 +33,8 @@ void initialize_grid(state_t *s, InitMode m) {
       int real_i = i + s->start_row;
       int real_j = j + s->start_col;
       //border
-      int centery = s->nrow/3;
-      int centerx = s->ncol/3;
+      int centery = s->nrow/2;
+      int centerx = s->ncol/2;
       int radius = centerx / 4;
       
       if ((real_i-centery) * (real_i-centery) + (real_j-centerx) * (real_j-centerx) <= radius * radius){
@@ -111,7 +111,7 @@ void red_black_step(state_t *s, int parity){
   if (s->this_zone == 0) finish_activity(ACTIVITY_SSTEP);
 }
 
-double run_grid(state_t *state, int steps, SimMode m) {
+grid_t *run_grid(state_t *state, int steps, SimMode m) {
   grid_t *g = state->g;
 
   if(m == M_JACOBI) {
@@ -140,14 +140,17 @@ double run_grid(state_t *state, int steps, SimMode m) {
     }
   }
   //send all to master
+  grid_t *new_g;
   #if MPI
   if (state->this_zone == 0) start_activity(ACTIVITY_GLOBAL_COMM);
   if(state->this_zone == 0){
-    gather_uv(state);
+    new_g = gather_uv(state);
   } else {
     send_uv(state);
   }
   if (state->this_zone == 0) finish_activity(ACTIVITY_GLOBAL_COMM);
+  #else
+  new_g = state->g;
   #endif
-  return 0;
+  return new_g;
 }

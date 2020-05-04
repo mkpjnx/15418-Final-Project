@@ -165,7 +165,7 @@ void finish_exchange_uv(state_t *s){
 }
 
 //gather after all runs are completed
-void gather_uv(state_t *s){
+grid_t *gather_uv(state_t *s){
   int h_divs = s->h_divs;
   grid_t *g = new_grid(s->nrow, s->ncol);
   int z_width = s->ncol / h_divs;
@@ -204,7 +204,7 @@ void gather_uv(state_t *s){
       }
     }
   }
-  s->g = g;
+  return g;
 }
 
 //send to master
