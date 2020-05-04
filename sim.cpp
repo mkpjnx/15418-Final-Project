@@ -47,6 +47,7 @@ double getGrad(grid_t *g, int i, int j, bool u) {
   double acc = 0;
   for(int ii = 0; ii < K_SIZE; ii++) {
     for(int jj = 0; jj < K_SIZE; jj++) {
+      if(LAPLACIAN[ii][jj] == 0) continue;
       int ind = (i + ii) * (g->ncol + 2) + j + jj;
       acc += (u? g->u : g->v)[ind] * LAPLACIAN[ii][jj];
     }
