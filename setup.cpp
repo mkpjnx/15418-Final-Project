@@ -8,8 +8,8 @@
 #include <algorithm>
 
 //helper routine for calculating length of 
-static inline int get_length(state_t *s, int dir) {
-  return (dir == NORTH || dir == SOUTH) ? s->end_col - s->start_col : s->end_row - s->start_row;
+static inline int get_length(grid_t *g, int dir) {
+  return (dir == NORTH || dir == SOUTH) ? g->ncol : g->nrow;
 }
 
 static inline void get_zone_start_end(int total, int divs, int ind, int *start, int *end){
@@ -67,11 +67,13 @@ state_t *init_zone(int nrow, int ncol, int process_count, int this_zone, int h_d
   
   s->export_node_list = (double**)calloc(sizeof(double*), 4);
   s->import_node_list = (double**)calloc(sizeof(double*), 4);
-
+  
+  printf("%d: %d - %d x %d - %d\n", this_zone, s->start_row, s->end_row,  s->start_col, s->end_col);
+  printf("%d: N: %d, S: %d, E: %d, W: %d \n", this_zone, s->neighbors[NORTH], s->neighbors[SOUTH], s->neighbors[EAST], s->neighbors[WEST]);
   //allocate buffers
   for(int dir = 0; dir < 4; dir ++) {
     if(s->neighbors[dir] == -1) continue;
-    int length = get_length(s, dir);
+    int length = get_length(s->g, dir);
     s->export_node_list[dir] = (double*)malloc(sizeof(double) * length * 4);
     s->import_node_list[dir] = s->export_node_list[dir] + 2 * length;
   }
@@ -96,7 +98,7 @@ void begin_exchange_uv(state_t *s){
     int zone = s->neighbors[dir];
     if(zone == -1) continue;
 
-    int length = get_length(s, dir);
+    int length = get_length(g, dir);
     //load into export buffer
     for(int k = 0; k < length; k++) {
       int grid_ind;
@@ -119,7 +121,7 @@ void begin_exchange_uv(state_t *s){
   for(int dir = 0; dir < 4; dir ++) {
     int zone = s->neighbors[dir];
     if(zone == -1) continue;
-    int length = get_length(s, dir);
+    int length = get_length(g, dir);
     MPI_Irecv(s->import_node_list[dir], 2*length, MPI_DOUBLE, zone, 0,
             MPI_COMM_WORLD, &s->recv_requests[dir]);
   }
@@ -145,7 +147,7 @@ void finish_exchange_uv(state_t *s){
   for(int dir = 0; dir < 4; dir ++) {
     int zone = s->neighbors[dir];
     if(zone == -1) continue;
-    int length = get_length(s, dir);
+    int length = get_length(g, dir);
     //load import buffer
     for(int k = 0; k < length; k++) {
       int grid_ind;

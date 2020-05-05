@@ -92,7 +92,7 @@ void red_black_step(state_t *s, int parity){
   grid_t *g = s->g;
   for(int i = 0; i < g->nrow; i ++){
     for(int j = 0; j < g->ncol; j ++){
-      if((i+j) % 2 == parity) continue;
+      if((s->start_row + i + s->start_col + j) % 2 == parity) continue;
       int ind = GINDEX(g, i, j);
       double Du = DU * getGrad(g, i, j,true);
       double Dv = DV * getGrad(g, i, j,false);
