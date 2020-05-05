@@ -3,11 +3,11 @@ import csv
 import subprocess
 import random
 
-runs = 8
+runs = 5
 repeats = 5
 mpi = True
 omp = False
-perf = True
+perf = False
 doAverage = True
 if (omp and mpi): print("DO NOT DO THIS")
 
@@ -39,18 +39,18 @@ f2 = open("Log/benchmark.csv", "w")
 f2.write(topText)
 
 #PRESET VALUES TO CHANGE OVER RUNS
-nps = [4  for i in range(runs)]
-ts  = [4 for i in range(runs)]
-gs  = [200, 250, 500, 750, 1000, 1250, 1500, 1750, 2000]
+nps = [16  for i in range(runs)]
+ts  = [i+1 for i in range(runs)]
+gs  = [500*i + 500 for i in range(runs)]
 ss  = [1000 for i in range(runs)]
 
 #OVERALL RUNS
 for r in range(runs):
   print("range ", r)
   g = gs[r]   #grid size
-  s = ss[r]    #steps
+  s = ss[r]   #steps
   np = nps[r] #number of processes MPI ONLY
-  d = 1       #divides MPI ONLY
+  d = 4       #divides MPI ONLY
   t = ts[r]   #threads OMP ONLY
   if doAverage:
     times = [0 for x in range(paramaters)]

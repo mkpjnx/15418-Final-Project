@@ -68,8 +68,8 @@ state_t *init_zone(int nrow, int ncol, int process_count, int this_zone, int h_d
   s->export_node_list = (double**)calloc(sizeof(double*), 4);
   s->import_node_list = (double**)calloc(sizeof(double*), 4);
   
-  printf("%d: %d - %d x %d - %d\n", this_zone, s->start_row, s->end_row,  s->start_col, s->end_col);
-  printf("%d: N: %d, S: %d, E: %d, W: %d \n", this_zone, s->neighbors[NORTH], s->neighbors[SOUTH], s->neighbors[EAST], s->neighbors[WEST]);
+  //printf("%d: %d - %d x %d - %d\n", this_zone, s->start_row, s->end_row,  s->start_col, s->end_col);
+  //printf("%d: N: %d, S: %d, E: %d, W: %d \n", this_zone, s->neighbors[NORTH], s->neighbors[SOUTH], s->neighbors[EAST], s->neighbors[WEST]);
   //allocate buffers
   for(int dir = 0; dir < 4; dir ++) {
     if(s->neighbors[dir] == -1) continue;
