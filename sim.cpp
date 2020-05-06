@@ -43,7 +43,7 @@ void initialize_grid(grid_t *g, InitMode m) {
   }
 }
 
-double getGrad(grid_t *g, int i, int j, bool u) {
+double inline getGrad(grid_t *g, int i, int j, bool u) {
   double acc = 0;
   for(int ii = 0; ii < K_SIZE; ii++) {
     for(int jj = 0; jj < K_SIZE; jj++) {
@@ -55,25 +55,29 @@ double getGrad(grid_t *g, int i, int j, bool u) {
   return acc;
 }
 
+void inline calc_single(grid_t *g, int i, int j, bool in_place = true) {
+    int ind = GINDEX(g, i, j);
+    double Du = DU * getGrad(g, i, j,true);
+    double Dv = DV * getGrad(g, i, j,false);
+    double u = g->u[ind];
+    double v = g->v[ind];
+    u += Du - u*v*v + FEED_RATE * (1.0 - u);
+    v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
+    u = CLAMP(u, 0.0, 1.0);
+    v = CLAMP(v, 0.0, 1.0);
+    
+    (in_place ? g->u : g->temp_u)[ind] = u;
+    (in_place ? g->v : g->temp_v)[ind] = v;
+}
+
+
 void jacobi_step(grid_t *g){
   #pragma omp parallel
   { 
   #pragma omp for
   for(int i = 0; i < g->nrow; i ++){
     for(int j = 0; j < g->ncol; j ++){
-      int ind = GINDEX(g, i, j);
-      double Du = DU * getGrad(g, i, j,true);
-      double Dv = DV * getGrad(g, i, j,false);
-      double u = g->u[ind];
-      double v = g->v[ind];
-      u += Du - u*v*v + FEED_RATE * (1.0 - u);
-      v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
-      u = CLAMP(u, 0.0, 1.0);
-      v = CLAMP(v, 0.0, 1.0);
-      
-      (g->temp_u)[ind] = u;
-      (g->temp_v)[ind] = v;
-      
+      calc_single(g, i ,j, false);
     }
   }
   }
@@ -88,18 +92,7 @@ void red_black_step(grid_t *g){
   for(int i = 0; i < g->nrow; i ++){
     for(int j = 0; j < g->ncol; j ++){
       if((i+j)%2 == 0) continue;
-      int ind = GINDEX(g, i, j);
-      double Du = DU * getGrad(g, i, j,true);
-      double Dv = DV * getGrad(g, i, j,false);
-      double u = g->u[ind];
-      double v = g->v[ind];
-      u += Du - u*v*v + FEED_RATE * (1.0 - u);
-      v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
-      u = CLAMP(u, 0.0, 1.0);
-      v = CLAMP(v, 0.0, 1.0);
-      
-      (g->u)[ind] = u;
-      (g->v)[ind] = v;
+      calc_single(g,i,j);
       }
     }
 
@@ -107,18 +100,7 @@ void red_black_step(grid_t *g){
   for(int i = 0; i < g->nrow; i ++){
     for(int j = 0; j < g->ncol; j ++){
       if((i+j)%2 == 1) continue;
-      int ind = GINDEX(g, i, j);
-      double Du = DU * getGrad(g, i, j,true);
-      double Dv = DV * getGrad(g, i, j,false);
-      double u = g->u[ind];
-      double v = g->v[ind];
-      u += Du - u*v*v + FEED_RATE * (1.0 - u);
-      v += Dv + u*v*v - (FEED_RATE + KILL_RATE)  * v;
-      u = CLAMP(u, 0.0, 1.0);
-      v = CLAMP(v, 0.0, 1.0);
-      
-      (g->u)[ind] = u;
-      (g->v)[ind] = v;
+      calc_single(g,i,j);
     }
   }
 
