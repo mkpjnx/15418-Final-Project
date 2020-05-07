@@ -20,7 +20,7 @@
 
 /* Categories of activities */
 #define ACTIVITY_COUNT 3
-typedef enum { ACTIVITY_OVERHEAD, ACTIVITY_STARTUP, ACTIVITY_JSTEP} activity_t;
+typedef enum { ACTIVITY_OVERHEAD, ACTIVITY_STARTUP, ACTIVITY_STEP} activity_t;
 
 void track_activity(bool enable);
 void start_activity(activity_t a);

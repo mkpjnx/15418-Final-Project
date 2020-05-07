@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "sim.h"
 
+// Allocates enough space for the entire grid
 grid_t *new_grid(int nrow, int ncol) {
   grid_t *g = (grid_t*) malloc(sizeof(grid_t));
   g->nrow = nrow;
@@ -17,12 +18,16 @@ grid_t *new_grid(int nrow, int ncol) {
   return g;
 }
 
+//Frees the grid once it is no longer needed
 void free_grid(grid_t *g) {
   free(g->u);
   free(g->v);
   free(g);
 }
 
+//Initializes the grid to have a circle of u = .25 and v = .5 centered around the 
+//middle
+//Sets the rest of the grid to have u = 1 and v = 0
 void initialize_grid(grid_t *g, InitMode m) {
   for(int i = -1; i <= g->nrow; i++) {
     for(int j = -1; j <= g->ncol; j++) {
@@ -43,6 +48,8 @@ void initialize_grid(grid_t *g, InitMode m) {
   }
 }
 
+//Loops over the Laplacian defined in sim.h to get the surrounding 
+//concentrations of u and v
 double inline getGrad(grid_t *g, int i, int j, bool u) {
   double acc = 0;
   for(int ii = 0; ii < K_SIZE; ii++) {
@@ -55,6 +62,9 @@ double inline getGrad(grid_t *g, int i, int j, bool u) {
   return acc;
 }
 
+
+//Used to calculate the change in each grid point over a single time step.
+//GINDEX is used to make sure that edge cases are avoided
 void inline calc_single(grid_t *g, int i, int j, bool in_place = true) {
     int ind = GINDEX(g, i, j);
     double Du = DU * getGrad(g, i, j,true);
@@ -70,7 +80,55 @@ void inline calc_single(grid_t *g, int i, int j, bool in_place = true) {
     (in_place ? g->v : g->temp_v)[ind] = v;
 }
 
+//Writes the values of u and v to an output file
+//Only used for checking correctess
+void write_raw(grid_t *g, int iter){
+  char buf[50];
+  sprintf(buf, "out/out%d.txt", iter);
+  FILE *fp = fopen(buf, "wb");
 
+  if (!fp) {
+      fprintf(stderr, "Error: could not open file for write\n");
+      exit(1);
+  }
+  for (int j=g->nrow-1; j>=0; j--) {
+    for (int i=0; i< g->ncol; i++) {
+
+      double dub = g->v[GINDEX(g,j,i)];
+      fprintf(fp, "%d,%d: %a\n", j, i, dub);
+    }
+  }
+    fclose(fp);
+}
+
+//Writes the value of V clamped to 0-255 into a ppm file.
+void write_ppm(grid_t *g, int iter){
+  char buf[50];
+  sprintf(buf, "out/out%d.ppm", iter);
+  FILE *fp = fopen(buf, "wb");
+  if (!fp) {
+      fprintf(stderr, "Error: could not open file for write\n");
+      exit(1);
+  }
+  //print header for the PPM file. has ncols and nrows
+  fprintf(fp, "P6\n%d %d\n255\n", g->ncol, g->nrow);
+  
+  //write out the value of the grid
+  for (int j=g->nrow-1; j>=0; j--) {
+    for (int i=0; i< g->ncol; i++) {
+      double dub = g->v[GINDEX(g,j,i)] * 3;
+      char value = static_cast<char>(255. * CLAMP(dub, 0., 1.));
+      char val[3] = {value, value, value};
+      for (int rgb = 0; rgb < 3; rgb ++){
+        fputc(val[rgb], fp);
+      }
+    }
+  }
+    fclose(fp);
+}
+
+//Jacobi update - create a dummy grid so store updates and then load that an the
+//new grid
 void jacobi_step(grid_t *g){
   #pragma omp parallel
   { 
@@ -85,6 +143,8 @@ void jacobi_step(grid_t *g){
   std::swap(g->v, g->temp_v);
 }
 
+//Red Black update - first update the red nodes (even graph index) then 
+//update the black nodes (odd graph index)
 void red_black_step(grid_t *g){
   #pragma omp parallel
   { 
@@ -95,7 +155,6 @@ void red_black_step(grid_t *g){
       calc_single(g,i,j);
       }
     }
-
   #pragma omp for
   for(int i = 0; i < g->nrow; i ++){
     for(int j = 0; j < g->ncol; j ++){
@@ -107,17 +166,19 @@ void red_black_step(grid_t *g){
   }
 }
 
+//Function to run s update steps
 double run_grid(grid_t *g, int steps, SimMode m) {
-  g->temp_u = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
-  g->temp_v = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
-  start_activity(ACTIVITY_JSTEP);
+  start_activity(ACTIVITY_STEP);
   for(int s = 0; s < steps; s++) {
+    // Only allocate space for a temp array if running the Jacobi
     if (m == M_JACOBI) {
+      g->temp_u = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
+      g->temp_v = (double*) calloc((g->nrow+2) * (g->ncol+2), sizeof(double));
       jacobi_step(g);
     } else if (m == M_REDBLACK) {
       red_black_step(g);
     }
   }
-  finish_activity(ACTIVITY_JSTEP);
+  finish_activity(ACTIVITY_STEP);
   return 1;
 }

@@ -16,10 +16,9 @@ convert:
 	rm out/*.ppm
 
 clean:
-	rm -rf out/*
+	rm -rf out/* Log/*
 	rm $(APP_NAME)-seq
 	rm $(APP_NAME)-omp
-	rm -rf sequential
 
 $(APP_NAME)-seq: $(DEPS) $(CXXFILES)
 		$(CXX) $(CXXFLAGS) -o $@ $(CXXFILES) -lm

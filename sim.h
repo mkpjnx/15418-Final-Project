@@ -30,6 +30,8 @@ typedef struct {
 
 #define CLAMP(x, minimum, maximum) std::max(minimum, std::min(x, maximum))
 
+void write_raw(grid_t *g, int iter);
+void write_ppm(grid_t *g, int iter);
 grid_t *new_grid(int nrow, int ncol);
 void free_grid(grid_t *g);
 void initialize_grid(grid_t *g, InitMode m = UNIFORM);
