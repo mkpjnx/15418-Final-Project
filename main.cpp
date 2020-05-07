@@ -16,126 +16,59 @@ void Exit(){
   exit(0);
 }
 
+//np (number of processes is given as an arg to mpi run)
 void usage(){
   printf("-h\t help\n");
   printf("-v\t verbose mode\n");
-  printf("-s S\t steps per run\n");
-  printf("-r R\t runs\n");
-  printf("-I\t verbose mode\n");
-  printf("-g G\t grid size\n");
+  printf("-s S\t steps per run \t\t Default: 500\n");
+  printf("-I\t instrument mode \n");
+  printf("-g G\t grid size \t\t Default: 256\n");
   printf("-d D\t horizantal divisions\n");
-}
-
-void write_raw(grid_t *g, int iter){
-  char buf[50];
-  sprintf(buf, "out/out%d.txt", iter);
-  FILE *fp = fopen(buf, "wb");
-
-  if (!fp) {
-      fprintf(stderr, "Error: could not open file for write\n");
-      exit(1);
-  }
-  for (int j=g->nrow-1; j>=0; j--) {
-    for (int i=0; i< g->ncol; i++) {
-
-      double dub = g->v[GINDEX(g,j,i)];
-      fprintf(fp, "%d,%d: %a\n", j, i, dub);
-    }
-  }
-    fclose(fp);
-}
-
-void write_ppm(grid_t *g, int iter){
-  char buf[50];
-  #if MPI
-    sprintf(buf, "out/MPI%d.ppm", iter);
-  #else
-    sprintf(buf, "out/out%d.ppm", iter);
-  #endif
-  FILE *fp = fopen(buf, "wb");
-
-  if (!fp) {
-      fprintf(stderr, "Error: could not open file for write\n");
-      exit(1);
-  }
-  fprintf(fp, "P6\n");
-  fprintf(fp, "%d %d\n", g->ncol, g->nrow);
-  fprintf(fp, "255\n");
-  for (int j=g->nrow-1; j>=0; j--) {
-    for (int i=0; i< g->ncol; i++) {
-
-      double dub = g->v[GINDEX(g,j,i)] * 3;
-
-      char val[3];
-      val[0] = static_cast<char>(255. * CLAMP(dub, 0., 1.));
-      val[1] = static_cast<char>(255. * CLAMP(dub, 0., 1.));
-      val[2] = static_cast<char>(255. * CLAMP(dub, 0., 1.));
-
-      fputc(val[0], fp);
-      fputc(val[1], fp);
-      fputc(val[2], fp);
-    }
-  }
-    fclose(fp);
+  printf("-u U\t Update function 0 for Jacobi 1 for Red Black \t Default: 0\n");
 }
 
 int main(int argc, char** argv){
-  bool instrument = false;
-  bool verbose = false;
-  int steps = 500;
-  int runs = 5;
-  int gridsize = 500;
+  //For performance modeling
+  bool instrument = false, verbose = false;
+
+  //Default values for the grid and simulations parameters
+  int steps = 500, runs = 5, gridsize = 500;
+  SimMode update = M_JACOBI;
   char opt;
 
-  int process_count = 1;
-  int horizantal_divisions = 1;
-  int this_zone = 0;
-  int nzone = 0;
+  //Specific MPI variables
+  int process_count = 1, horizantal_divisions = 1, this_zone = 0, nzone = 0;
 
+  //Initialize the MPI variables
   #if MPI
     MPI_Init(NULL,NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &process_count);
     MPI_Comm_rank(MPI_COMM_WORLD, &this_zone);
   #endif
-  char* opstring = "hvs:r:Ig:d:";
 
   bool mpi_master = this_zone == 0;
 
   
-  while ((opt = getopt(argc, argv, opstring)) != -1) {
+  while ((opt = getopt(argc, argv, "hvs:r:Ig:d:u:")) != -1) {
     switch (opt) {
-    case 'h':
-      printf("h for howdy\n");
-      break;
-    case 'v':
-      verbose = true;
-      break;
-    case 's':
-      steps = atoi(optarg);
-      break;
-    case 'r':
-      runs = atoi(optarg);
-      break;
-    case 'I':
-      instrument = true;
-      break;
-    case 'g':
-      gridsize = atoi(optarg);
-      break;
-    case 'd':
-      horizantal_divisions = atoi(optarg);
-      break;
+    case 'h': usage(); Exit(); break;
+    case 'v': verbose = true; break;
+    case 's': steps = atoi(optarg);break;
+    case 'r': runs = atoi(optarg);break;
+    case 'I': instrument = true; break;
+    case 'g': gridsize = atoi(optarg); break;
+    case 'd': horizantal_divisions = atoi(optarg); break;
     default:
-      printf("Unknown argument");
+      fprintf(stderr, "Usage: %s \n", argv[0]);
       usage();
       Exit();
     }
   }
 
-
-  //args: Time steps
-
+  //Begin tracking the instrumentation
   track_activity(instrument); 
+
+  //STARTUP
   if (mpi_master) start_activity(ACTIVITY_STARTUP);
   state_t *s = init_zone(gridsize, gridsize, process_count, this_zone, horizantal_divisions);
   if (s == NULL) {
@@ -144,20 +77,28 @@ int main(int argc, char** argv){
   }
   initialize_grid(s);
   if (mpi_master) finish_activity(ACTIVITY_STARTUP);
-  double average = 0;
-  double start;
+
+  //different implementation of how the grid is represented than from OMP due
+  //to the lack of shared memory
   grid_t *new_g;
+
+  //MAIN LOOP
+  //Not parallelizable as each run is dependant on the result of the previous
   for(int i = 0; i < runs; i ++){
     if (verbose && mpi_master) printf("Run:\t%d\n", i);
+
+    // the update
     new_g = run_grid(s, steps, M_REDBLACK);
+
+    //Write_raw is used to compare the exact values of the grid
+    //Whereas write_ppm only considers the concentrations of v on a scale of
+    // 0-255
+    //if(mpi_master) write_ppm(new_g, i);
     if(mpi_master) write_ppm(new_g, i);
   }
   if (mpi_master){
     show_activity(instrument);
   }
-  #if MPI
-    MPI_Finalize();
-  #endif
-  return 0;
+  Exit();
 }
 

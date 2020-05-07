@@ -8,6 +8,7 @@
 #include "sim.h"
 #include "setup.h"
 
+//Allocates enough space for local grid
 grid_t *new_grid(int nrow, int ncol) {
   grid_t *g = (grid_t*) malloc(sizeof(grid_t));
   g->nrow = nrow;
@@ -18,12 +19,16 @@ grid_t *new_grid(int nrow, int ncol) {
   return g;
 }
 
+//Frees grid once it is no longer in use
 void free_grid(grid_t *g) {
   free(g->u);
   free(g->v);
   free(g);
 }
 
+//Initializes the grid to have a circle of u = .25 and v = .5 centered around the 
+//middle
+//Sets the rest of the grid to have u = 1 and v = 0
 void initialize_grid(state_t *s, InitMode m) {
   grid_t *g = s->g;
   for(int i = -1; i <= g->nrow; i++) {
@@ -48,6 +53,61 @@ void initialize_grid(state_t *s, InitMode m) {
   }
 }
 
+//Writes the values of u and v to an output file
+//Only used for checking correctess
+void write_raw(grid_t *g, int iter){
+  char buf[50];
+  sprintf(buf, "out/out%d.txt", iter);
+  FILE *fp = fopen(buf, "wb");
+
+  if (!fp) {
+      fprintf(stderr, "Error: could not open file for write\n");
+      exit(1);
+  }
+  for (int j=g->nrow-1; j>=0; j--) {
+    for (int i=0; i< g->ncol; i++) {
+
+      double dub = g->v[GINDEX(g,j,i)];
+      fprintf(fp, "%d,%d: %a\n", j, i, dub);
+    }
+  }
+    fclose(fp);
+}
+
+//Writes the value of V clamped to 0-255 into a ppm file.
+void write_ppm(grid_t *g, int iter){
+  char buf[50];
+  #if MPI
+    sprintf(buf, "out/MPI%d.ppm", iter);
+  #else
+    sprintf(buf, "out/out%d.ppm", iter);
+  #endif
+  FILE *fp = fopen(buf, "wb");
+
+  if (!fp) {
+      fprintf(stderr, "Error: could not open file for write\n");
+      exit(1);
+  }
+
+  //print header for the PPM file. has ncols and nrows
+  fprintf(fp, "P6\n%d %d\n255\n", g->ncol, g->nrow);
+  
+  //write out the value of the grid
+  for (int j=g->nrow-1; j>=0; j--) {
+    for (int i=0; i< g->ncol; i++) {
+      double dub = g->v[GINDEX(g,j,i)] * 3;
+      char value = static_cast<char>(255. * CLAMP(dub, 0., 1.));
+      char val[3] = {value, value, value};
+      for (int rgb = 0; rgb < 3; rgb ++){
+        fputc(val[rgb], fp);
+      }
+    }
+  }
+    fclose(fp);
+}
+
+//Loops over the Laplacian defined in sim.h to get the surrounding 
+//concentrations of u and v
 double inline getGrad(grid_t *g, int i, int j, bool u) {
   double acc = 0;
   for(int ii = 0; ii < K_SIZE; ii++) {
@@ -60,7 +120,8 @@ double inline getGrad(grid_t *g, int i, int j, bool u) {
   return acc;
 }
 
-
+//Used to calculate the change in each grid point over a single time step.
+//GINDEX is used to make sure that edge cases are avoided
 void inline calc_single(grid_t *g, int i, int j, bool in_place = true) {
     int ind = GINDEX(g, i, j);
     double Du = DU * getGrad(g, i, j,true);
@@ -76,6 +137,8 @@ void inline calc_single(grid_t *g, int i, int j, bool in_place = true) {
     (in_place ? g->v : g->temp_v)[ind] = v;
 }
 
+//Jacobi update - create a dummy grid so store updates and then load that an the
+//new grid
 void jacobi_step(state_t *s){
 
   #if MPI
@@ -116,6 +179,8 @@ void jacobi_step(state_t *s){
 
 }
 
+//Red Black update - first update the red nodes (even graph index) then 
+//update the black nodes (odd graph index)
 void red_black_step(state_t *s, int parity){
   #if MPI
     begin_exchange_uv(s);
@@ -155,6 +220,8 @@ void red_black_step(state_t *s, int parity){
   if (s->this_zone == 0) finish_activity(ACTIVITY_SSTEP);
 }
 
+//Function to run s update steps
+
 grid_t *run_grid(state_t *state, int steps, SimMode m) {
   grid_t *g = state->g;
 
@@ -167,30 +234,35 @@ grid_t *run_grid(state_t *state, int steps, SimMode m) {
     if(m == M_JACOBI) {
       jacobi_step(state);
     } else if (m == M_REDBLACK) {
+      //red
       red_black_step(state, 0);
+      //Comunicate all needed rows/cols
       #if MPI
         begin_exchange_uv(state);
         finish_exchange_uv(state);
       #endif
+      //black
       red_black_step(state, 1);
       #if MPI
+      //comunicate all needed rows/cols
         begin_exchange_uv(state);
         finish_exchange_uv(state);
       #endif
     }
   }
-  //send all to master
+  //initialize return value
   grid_t *new_g;
+
   #if MPI
-  if (state->this_zone == 0) start_activity(ACTIVITY_GLOBAL_COMM);
-  if(state->this_zone == 0){
-    new_g = gather_uv(state);
-  } else {
-    send_uv(state);
-  }
-  if (state->this_zone == 0) finish_activity(ACTIVITY_GLOBAL_COMM);
+    if (state->this_zone == 0) start_activity(ACTIVITY_GLOBAL_COMM);
+    if(state->this_zone == 0){
+      new_g = gather_uv(state);
+    } else {
+      send_uv(state);
+    }
+    if (state->this_zone == 0) finish_activity(ACTIVITY_GLOBAL_COMM);
   #else
-  new_g = state->g;
+    new_g = state->g;
   #endif
   return new_g;
 }

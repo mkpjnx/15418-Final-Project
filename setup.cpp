@@ -23,10 +23,10 @@ static inline void get_zone_start_end(int total, int divs, int ind, int *start, 
 
 *|   N O R T H    |*
 --------------------
-W| this zone ...  |E
-E| ....           |A
-T| ....           |S
-S| ....           |T
+W| ..this zone ...|E
+E| ...............|A
+T| ...............|S
+S| ...............|T
 --------------------
 *|   S O U T H    |*
 
@@ -40,6 +40,7 @@ state_t *init_zone(int nrow, int ncol, int process_count, int this_zone, int h_d
   int v_divs = process_count / h_divs;
   int z_height = nrow / v_divs;
 
+  //initialize the state of the process
   state_t *s = (state_t*)malloc(sizeof(state_t));
   s->nrow = nrow;
   s->ncol = ncol;
@@ -51,7 +52,6 @@ state_t *init_zone(int nrow, int ncol, int process_count, int this_zone, int h_d
   //calculate rectangle
   get_zone_start_end(nrow, v_divs, this_zone / h_divs,
     &(s->start_row), &(s->end_row));
-  
   get_zone_start_end(ncol, h_divs, this_zone % h_divs,
     &(s->start_col), &(s->end_col));
 
@@ -68,8 +68,6 @@ state_t *init_zone(int nrow, int ncol, int process_count, int this_zone, int h_d
   s->export_node_list = (double**)calloc(sizeof(double*), 4);
   s->import_node_list = (double**)calloc(sizeof(double*), 4);
   
-  //printf("%d: %d - %d x %d - %d\n", this_zone, s->start_row, s->end_row,  s->start_col, s->end_col);
-  //printf("%d: N: %d, S: %d, E: %d, W: %d \n", this_zone, s->neighbors[NORTH], s->neighbors[SOUTH], s->neighbors[EAST], s->neighbors[WEST]);
   //allocate buffers
   for(int dir = 0; dir < 4; dir ++) {
     if(s->neighbors[dir] == -1) continue;
@@ -86,7 +84,6 @@ state_t *init_zone(int nrow, int ncol, int process_count, int this_zone, int h_d
 }
 
 #if MPI
-
 
 void begin_exchange_uv(state_t *s){
   if (s->this_zone == 0) start_activity(ACTIVITY_LOCAL_COMM);

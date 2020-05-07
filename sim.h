@@ -74,6 +74,8 @@ typedef struct{
   #endif
 } state_t;
 
+void write_raw(grid_t *g, int iter);
+void write_ppm(grid_t *g, int iter);
 grid_t *new_grid(int nrow, int ncol);
 void free_grid(grid_t *g);
 void initialize_grid(state_t *s, InitMode m = UNIFORM);
